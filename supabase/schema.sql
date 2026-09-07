@@ -34,6 +34,7 @@ create table if not exists tickets (
   server_link text,
   status text not null default 'pending' check (status in ('pending', 'accepted', 'rejected', 'sent_on_dash', 'sent_to_lockers')),
   admin_note text,
+  handled_by text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

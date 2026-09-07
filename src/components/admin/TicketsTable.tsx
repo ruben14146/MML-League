@@ -270,11 +270,16 @@ export default function TicketsTable() {
               </div>
 
               <div className="flex items-center gap-2">
-                <span
-                  className={`rounded-full border px-3 py-1 text-xs font-medium ${STATUS_STYLE[ticket.status]}`}
-                >
-                  {STATUS_LABEL[ticket.status]}
-                </span>
+                <div className="flex flex-col items-start gap-0.5">
+                  <span
+                    className={`rounded-full border px-3 py-1 text-xs font-medium ${STATUS_STYLE[ticket.status]}`}
+                  >
+                    {STATUS_LABEL[ticket.status]}
+                  </span>
+                  {ticket.handled_by && (
+                    <span className="text-[10px] text-muted">by {ticket.handled_by}</span>
+                  )}
+                </div>
                 {updating === ticket.ticket_code ? (
                   <Loader2 className="animate-spin text-teal" size={18} />
                 ) : (

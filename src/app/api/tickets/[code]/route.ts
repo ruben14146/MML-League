@@ -53,7 +53,10 @@ export async function PATCH(
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
 
-  const update: Partial<TicketRow> = { status: status as TicketStatus };
+  const update: Partial<TicketRow> = {
+    status: status as TicketStatus,
+    handled_by: staff.session.user?.discordUsername ?? null,
+  };
   if (adminNote !== undefined) update.admin_note = adminNote || null;
 
   const { data, error } = await supabaseAdmin()

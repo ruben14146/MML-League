@@ -27,7 +27,10 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabaseAdmin()
     .from("tickets")
-    .update({ status: target as TicketStatus })
+    .update({
+      status: target as TicketStatus,
+      handled_by: staff.session.user?.discordUsername ?? null,
+    })
     .eq("status", fromStatus)
     .select("id");
 

@@ -35,6 +35,7 @@ export type TicketRow = {
   server_link: string | null;
   status: TicketStatus;
   admin_note: string | null;
+  handled_by: string | null;
   created_at: string;
   updated_at: string;
 };
