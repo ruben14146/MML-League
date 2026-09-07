@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Copy, Check } from "lucide-react";
+import { Loader2, Copy, Check, Send } from "lucide-react";
 import type { TicketRow } from "@/lib/db.types";
 
 type TicketWithItem = TicketRow & {
@@ -19,6 +19,8 @@ export default function FulfillmentView() {
   const [tickets, setTickets] = useState<TicketWithItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiedItemId, setCopiedItemId] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+  const [sendResult, setSendResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch-on-mount
@@ -54,6 +56,28 @@ export default function FulfillmentView() {
     setTimeout(() => setCopiedItemId(null), 1500);
   }
 
+  async function sendToDiscord() {
+    if (!confirm("Send every accepted ticket to Discord, grouped by item?")) return;
+    setSending(true);
+    setSendResult(null);
+    try {
+      const res = await fetch("/api/tickets/notify-discord", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Something went wrong");
+      setSendResult({
+        ok: true,
+        message: `Sent ${data.tickets} ticket(s) across ${data.sent} message(s).`,
+      });
+    } catch (e) {
+      setSendResult({
+        ok: false,
+        message: e instanceof Error ? e.message : "Something went wrong",
+      });
+    } finally {
+      setSending(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center py-16">
@@ -68,6 +92,20 @@ export default function FulfillmentView() {
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={sendToDiscord}
+          disabled={sending}
+          className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-teal to-pink px-4 py-2 text-sm font-semibold text-background disabled:opacity-40"
+        >
+          {sending ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+          Send to Discord
+        </button>
+        {sendResult && (
+          <p className={`text-sm ${sendResult.ok ? "text-success" : "text-danger"}`}>{sendResult.message}</p>
+        )}
+      </div>
+
       {groups.map((group) => (
         <div key={group.itemId} className="panel p-5">
           <div className="flex items-center gap-3">
