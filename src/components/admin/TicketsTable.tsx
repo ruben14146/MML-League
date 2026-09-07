@@ -12,6 +12,8 @@ import {
   Ban,
   Pencil,
   AlertTriangle,
+  Search,
+  X,
 } from "lucide-react";
 import type { TicketRow, TicketStatus } from "@/lib/db.types";
 
@@ -47,6 +49,8 @@ const STATUS_STYLE: Record<TicketStatus, string> = {
 
 export default function TicketsTable() {
   const [filter, setFilter] = useState<TicketStatus | "all">("pending");
+  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [tickets, setTickets] = useState<TicketWithItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -55,7 +59,9 @@ export default function TicketsTable() {
 
   async function load() {
     setLoading(true);
-    const res = await fetch(`/api/tickets?status=${filter}`);
+    const params = new URLSearchParams({ status: filter });
+    if (search.trim()) params.set("search", search.trim());
+    const res = await fetch(`/api/tickets?${params}`);
     const data = await res.json();
     setTickets(data.tickets ?? []);
     setLoading(false);
@@ -65,7 +71,13 @@ export default function TicketsTable() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch-on-mount/filter-change
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter]);
+  }, [filter, search]);
+
+  // Debounce the search box so we're not firing a request per keystroke.
+  useEffect(() => {
+    const id = setTimeout(() => setSearch(searchInput), 300);
+    return () => clearTimeout(id);
+  }, [searchInput]);
 
   async function updateStatus(code: string, status: TicketStatus, adminNote?: string) {
     setUpdating(code);
@@ -129,7 +141,26 @@ export default function TicketsTable() {
 
   return (
     <div>
-      <div className="flex flex-wrap gap-2">
+      <div className="relative">
+        <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+        <input
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Search by ticket code, Discord username/ID, or player ID..."
+          className="w-full rounded-lg border border-panel-border bg-background-elevated py-2.5 pl-9 pr-9 text-sm outline-none focus:border-teal"
+        />
+        {searchInput && (
+          <button
+            onClick={() => setSearchInput("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-teal"
+            aria-label="Clear search"
+          >
+            <X size={16} />
+          </button>
+        )}
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
         {FILTERS.map((f) => (
           <button
             key={f}

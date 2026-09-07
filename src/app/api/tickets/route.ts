@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
   if (!staff) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const status = request.nextUrl.searchParams.get("status");
+  const search = request.nextUrl.searchParams.get("search")?.trim();
   let query = supabaseAdmin()
     .from("tickets")
     .select("*, ticket_items(name, image_url)")
@@ -37,6 +38,15 @@ export async function GET(request: NextRequest) {
 
   if (status && VALID_STATUSES.includes(status as TicketStatus)) {
     query = query.eq("status", status as TicketStatus);
+  }
+
+  if (search) {
+    // Strip characters meaningful to PostgREST's .or() filter syntax so a
+    // search term can't be crafted to splice in extra filter conditions.
+    const safe = search.replace(/[,()]/g, "");
+    query = query.or(
+      `ticket_code.ilike.%${safe}%,discord_username.ilike.%${safe}%,discord_id.ilike.%${safe}%,player_id.ilike.%${safe}%`
+    );
   }
 
   const { data, error } = await query;
