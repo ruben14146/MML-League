@@ -25,7 +25,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  session: { strategy: "jwt" },
+  // Shorter-lived than the NextAuth default (30 days) — this app gates a
+  // staff admin panel, so a stolen session cookie should go stale sooner.
+  session: { strategy: "jwt", maxAge: 7 * 24 * 60 * 60, updateAge: 24 * 60 * 60 },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
