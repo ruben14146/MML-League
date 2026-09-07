@@ -31,7 +31,7 @@ create table if not exists tickets (
   location text not null check (location in ('inside', 'outside')),
   league_name text,
   server_link text,
-  status text not null default 'pending' check (status in ('pending', 'accepted', 'rejected')),
+  status text not null default 'pending' check (status in ('pending', 'accepted', 'rejected', 'sent_on_dash', 'sent_to_lockers')),
   admin_note text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -58,3 +58,15 @@ create trigger tickets_set_updated_at
 insert into storage.buckets (id, name, public)
 values ('item-images', 'item-images', true)
 on conflict (id) do nothing;
+
+-- Staff role assignments. Discord IDs listed in ADMIN_DISCORD_IDS are always
+-- treated as "developer" regardless of this table (bootstrap/failsafe), so
+-- staff access can never be locked out by deleting rows here.
+create table if not exists staff_roles (
+  id uuid primary key default gen_random_uuid(),
+  discord_id text not null unique,
+  discord_username text,
+  role text not null check (role in ('developer', 'owner', 'admin')),
+  granted_by text,
+  created_at timestamptz not null default now()
+);

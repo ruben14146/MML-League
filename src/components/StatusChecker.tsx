@@ -1,20 +1,23 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, Search, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, Search, Clock, CheckCircle2, XCircle, Monitor, PackageCheck } from "lucide-react";
+import type { TicketStatus } from "@/lib/db.types";
 
 interface TicketStatusResult {
   ticket_code: string;
-  status: "pending" | "accepted" | "rejected";
+  status: TicketStatus;
   admin_note: string | null;
   created_at: string;
   ticket_items: { name: string; image_url: string | null } | null;
 }
 
-const STATUS_META = {
+const STATUS_META: Record<TicketStatus, { icon: typeof Clock; color: string; label: string }> = {
   pending: { icon: Clock, color: "text-warning", label: "Pending review" },
   accepted: { icon: CheckCircle2, color: "text-success", label: "Accepted" },
   rejected: { icon: XCircle, color: "text-danger", label: "Rejected" },
+  sent_on_dash: { icon: Monitor, color: "text-teal", label: "Sent on dash" },
+  sent_to_lockers: { icon: PackageCheck, color: "text-pink", label: "Sent to lockers" },
 };
 
 export default function StatusChecker() {

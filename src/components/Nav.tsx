@@ -24,9 +24,7 @@ export default function Nav() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3">
         <Link href="/" className="flex items-center gap-3">
           <Logo size={36} />
-          <span className="text-lg font-extrabold tracking-wide">
-            MML <span className="font-normal text-muted">League</span>
-          </span>
+          <span className="text-lg font-extrabold tracking-wide">MML</span>
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">

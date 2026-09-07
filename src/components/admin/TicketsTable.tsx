@@ -1,19 +1,44 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, CheckCircle2, XCircle, Clock, ExternalLink } from "lucide-react";
+import {
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  ExternalLink,
+  Monitor,
+  PackageCheck,
+} from "lucide-react";
 import type { TicketRow, TicketStatus } from "@/lib/db.types";
 
 type TicketWithItem = TicketRow & {
   ticket_items: { name: string; image_url: string | null } | null;
 };
 
-const FILTERS: (TicketStatus | "all")[] = ["all", "pending", "accepted", "rejected"];
+const FILTERS: (TicketStatus | "all")[] = [
+  "all",
+  "pending",
+  "accepted",
+  "rejected",
+  "sent_on_dash",
+  "sent_to_lockers",
+];
+
+const STATUS_LABEL: Record<TicketStatus, string> = {
+  pending: "Pending",
+  accepted: "Accepted",
+  rejected: "Rejected",
+  sent_on_dash: "Sent on dash",
+  sent_to_lockers: "Sent to lockers",
+};
 
 const STATUS_STYLE: Record<TicketStatus, string> = {
   pending: "text-warning border-warning/40 bg-warning/10",
   accepted: "text-success border-success/40 bg-success/10",
   rejected: "text-danger border-danger/40 bg-danger/10",
+  sent_on_dash: "text-teal border-teal-dim bg-teal/10",
+  sent_to_lockers: "text-pink border-pink/40 bg-pink/10",
 };
 
 export default function TicketsTable() {
@@ -21,6 +46,7 @@ export default function TicketsTable() {
   const [tickets, setTickets] = useState<TicketWithItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
+  const [bulkRunning, setBulkRunning] = useState<TicketStatus | null>(null);
 
   async function load() {
     setLoading(true);
@@ -47,6 +73,25 @@ export default function TicketsTable() {
     setUpdating(null);
   }
 
+  async function bulkUpdate(target: "sent_on_dash" | "sent_to_lockers") {
+    const fromLabel = target === "sent_on_dash" ? "accepted" : "sent on dash";
+    if (!confirm(`Move every "${fromLabel}" ticket to "${STATUS_LABEL[target]}"?`)) return;
+
+    setBulkRunning(target);
+    try {
+      const res = await fetch("/api/tickets/bulk-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target }),
+      });
+      const data = await res.json();
+      if (res.ok) await load();
+      else alert(data.error ?? "Something went wrong");
+    } finally {
+      setBulkRunning(null);
+    }
+  }
+
   return (
     <div>
       <div className="flex flex-wrap gap-2">
@@ -60,9 +105,36 @@ export default function TicketsTable() {
                 : "border border-panel-border text-muted hover:text-teal"
             }`}
           >
-            {f}
+            {f === "all" ? "all" : STATUS_LABEL[f]}
           </button>
         ))}
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <button
+          onClick={() => bulkUpdate("sent_on_dash")}
+          disabled={bulkRunning !== null}
+          className="flex items-center gap-2 rounded-lg border border-teal-dim px-4 py-2 text-sm font-medium text-teal hover:bg-teal/10 disabled:opacity-40"
+        >
+          {bulkRunning === "sent_on_dash" ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <Monitor size={16} />
+          )}
+          Bulk: accepted &rarr; sent on dash
+        </button>
+        <button
+          onClick={() => bulkUpdate("sent_to_lockers")}
+          disabled={bulkRunning !== null}
+          className="flex items-center gap-2 rounded-lg border border-pink/40 px-4 py-2 text-sm font-medium text-pink hover:bg-pink/10 disabled:opacity-40"
+        >
+          {bulkRunning === "sent_to_lockers" ? (
+            <Loader2 size={16} className="animate-spin" />
+          ) : (
+            <PackageCheck size={16} />
+          )}
+          Bulk: sent on dash &rarr; sent to lockers
+        </button>
       </div>
 
       {loading ? (
@@ -118,9 +190,9 @@ export default function TicketsTable() {
 
               <div className="flex items-center gap-2">
                 <span
-                  className={`rounded-full border px-3 py-1 text-xs font-medium capitalize ${STATUS_STYLE[ticket.status]}`}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium ${STATUS_STYLE[ticket.status]}`}
                 >
-                  {ticket.status}
+                  {STATUS_LABEL[ticket.status]}
                 </span>
                 {updating === ticket.ticket_code ? (
                   <Loader2 className="animate-spin text-teal" size={18} />
@@ -149,6 +221,22 @@ export default function TicketsTable() {
                       aria-label="Mark pending"
                     >
                       <Clock size={18} />
+                    </button>
+                    <button
+                      onClick={() => updateStatus(ticket.ticket_code, "sent_on_dash")}
+                      disabled={ticket.status === "sent_on_dash"}
+                      className="rounded-lg p-2 text-teal hover:bg-teal/10 disabled:opacity-30"
+                      aria-label="Mark sent on dash"
+                    >
+                      <Monitor size={18} />
+                    </button>
+                    <button
+                      onClick={() => updateStatus(ticket.ticket_code, "sent_to_lockers")}
+                      disabled={ticket.status === "sent_to_lockers"}
+                      className="rounded-lg p-2 text-pink hover:bg-pink/10 disabled:opacity-30"
+                      aria-label="Mark sent to lockers"
+                    >
+                      <PackageCheck size={18} />
                     </button>
                   </>
                 )}

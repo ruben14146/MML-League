@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Ticket, Boxes } from "lucide-react";
+import { LayoutDashboard, Ticket, Boxes, Users } from "lucide-react";
 
 const LINKS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/tickets", label: "Tickets", icon: Ticket },
   { href: "/admin/items", label: "Items", icon: Boxes },
+  { href: "/admin/staff", label: "Staff", icon: Users },
 ];
 
 export default function AdminNav() {

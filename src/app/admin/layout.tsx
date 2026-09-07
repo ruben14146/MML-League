@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
-import { isAdminDiscordId } from "@/lib/admin";
+import { requireStaffSession } from "@/lib/admin";
 import { ShieldAlert } from "lucide-react";
 import AdminNav from "@/components/admin/AdminNav";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
-  const discordId = session?.user?.discordId;
 
   if (!session) {
     return (
@@ -24,13 +23,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     );
   }
 
-  if (!isAdminDiscordId(discordId)) {
+  const staff = await requireStaffSession();
+
+  if (!staff) {
     return (
       <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-5 py-24 text-center">
         <ShieldAlert size={40} className="text-danger" />
         <h1 className="text-2xl font-bold">Access denied</h1>
         <p className="text-muted">
-          Your Discord account isn&apos;t on the staff allowlist for the admin panel.
+          Your Discord account isn&apos;t on the staff list for the admin panel.
         </p>
         <Link
           href="/"
@@ -44,8 +45,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="mx-auto max-w-6xl px-5 py-10">
-      <AdminNav />
-      <div className="mt-8">{children}</div>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <AdminNav />
+        <span className="rounded-full border border-teal-dim px-3 py-1 text-xs font-medium capitalize text-teal">
+          {staff.role}
+        </span>
+      </div>
+      <div>{children}</div>
     </div>
   );
 }

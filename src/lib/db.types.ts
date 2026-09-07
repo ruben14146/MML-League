@@ -1,5 +1,11 @@
-export type TicketStatus = "pending" | "accepted" | "rejected";
+export type TicketStatus =
+  | "pending"
+  | "accepted"
+  | "rejected"
+  | "sent_on_dash"
+  | "sent_to_lockers";
 export type TicketLocation = "inside" | "outside";
+export type StaffRole = "developer" | "owner" | "admin";
 
 export type TicketItemRow = {
   id: string;
@@ -32,6 +38,15 @@ export type TicketRow = {
   updated_at: string;
 };
 
+export type StaffRoleRow = {
+  id: string;
+  discord_id: string;
+  discord_username: string | null;
+  role: StaffRole;
+  granted_by: string | null;
+  created_at: string;
+};
+
 type Table<Row, Insert, Update> = {
   Row: Row;
   Insert: Insert;
@@ -61,6 +76,11 @@ export type Database = {
           location: TicketLocation;
         },
         Partial<TicketRow>
+      >;
+      staff_roles: Table<
+        StaffRoleRow,
+        Partial<StaffRoleRow> & { discord_id: string; role: StaffRole },
+        Partial<StaffRoleRow>
       >;
     };
     Views: Record<string, never>;

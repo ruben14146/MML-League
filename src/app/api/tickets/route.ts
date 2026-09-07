@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { requireAdminSession } from "@/lib/admin";
+import { requireStaffSession } from "@/lib/admin";
 import { supabaseAdmin } from "@/lib/supabase";
 import {
   generateTicketCode,
@@ -9,12 +9,18 @@ import {
 } from "@/lib/tickets";
 import type { TicketStatus } from "@/lib/db.types";
 
-const VALID_STATUSES: TicketStatus[] = ["pending", "accepted", "rejected"];
+const VALID_STATUSES: TicketStatus[] = [
+  "pending",
+  "accepted",
+  "rejected",
+  "sent_on_dash",
+  "sent_to_lockers",
+];
 
 // Admin: list all tickets, optionally filtered by status.
 export async function GET(request: NextRequest) {
-  const session = await requireAdminSession();
-  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const staff = await requireStaffSession();
+  if (!staff) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const status = request.nextUrl.searchParams.get("status");
   let query = supabaseAdmin()

@@ -1,22 +1,14 @@
 import { auth } from "@/lib/auth";
+import { getStaffRole } from "@/lib/roles";
+import type { StaffRole } from "@/lib/db.types";
+import type { Session } from "next-auth";
 
-function allowlist() {
-  return (process.env.ADMIN_DISCORD_IDS ?? "")
-    .split(",")
-    .map((id) => id.trim())
-    .filter(Boolean);
-}
-
-export function isAdminDiscordId(discordId: string | null | undefined) {
-  if (!discordId) return false;
-  return allowlist().includes(discordId);
-}
-
-export async function requireAdminSession() {
+export async function requireStaffSession(): Promise<
+  { session: Session; role: StaffRole } | null
+> {
   const session = await auth();
   const discordId = session?.user?.discordId;
-  if (!session || !isAdminDiscordId(discordId)) {
-    return null;
-  }
-  return session;
+  const role = await getStaffRole(discordId);
+  if (!session || !role) return null;
+  return { session, role };
 }

@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
-import { requireAdminSession } from "@/lib/admin";
+import { requireStaffSession } from "@/lib/admin";
 import type { TicketRow, TicketStatus } from "@/lib/db.types";
 
-const VALID_STATUSES: TicketStatus[] = ["pending", "accepted", "rejected"];
+const VALID_STATUSES: TicketStatus[] = [
+  "pending",
+  "accepted",
+  "rejected",
+  "sent_on_dash",
+  "sent_to_lockers",
+];
 
 function normalizeCode(raw: string) {
   const trimmed = raw.trim().toUpperCase();
@@ -34,8 +40,8 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ code: string }> }
 ) {
-  const session = await requireAdminSession();
-  if (!session) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const staff = await requireStaffSession();
+  if (!staff) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { code } = await params;
   const body = await request.json();
