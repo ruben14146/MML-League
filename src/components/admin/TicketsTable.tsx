@@ -10,6 +10,7 @@ import {
   Monitor,
   PackageCheck,
   Ban,
+  Pencil,
 } from "lucide-react";
 import type { TicketRow, TicketStatus } from "@/lib/db.types";
 
@@ -64,15 +65,27 @@ export default function TicketsTable() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
-  async function updateStatus(code: string, status: TicketStatus) {
+  async function updateStatus(code: string, status: TicketStatus, adminNote?: string) {
     setUpdating(code);
     await fetch(`/api/tickets/${code}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify(adminNote === undefined ? { status } : { status, admin_note: adminNote }),
     });
     await load();
     setUpdating(null);
+  }
+
+  function reject(code: string) {
+    const reason = prompt("Rejection reason (shown to the user on their status page):");
+    if (reason === null) return; // cancelled
+    updateStatus(code, "rejected", reason.trim());
+  }
+
+  function editReason(code: string, currentNote: string | null) {
+    const reason = prompt("Reason shown to the user on their status page:", currentNote ?? "");
+    if (reason === null) return; // cancelled
+    updateStatus(code, "rejected", reason.trim());
   }
 
   async function banUser(discordId: string, discordUsername: string) {
@@ -205,6 +218,9 @@ export default function TicketsTable() {
                       Server link <ExternalLink size={11} />
                     </a>
                   )}
+                  {ticket.status === "rejected" && ticket.admin_note && (
+                    <p className="mt-1 text-xs text-danger">Reason: {ticket.admin_note}</p>
+                  )}
                 </div>
               </div>
 
@@ -227,13 +243,22 @@ export default function TicketsTable() {
                       <CheckCircle2 size={18} />
                     </button>
                     <button
-                      onClick={() => updateStatus(ticket.ticket_code, "rejected")}
+                      onClick={() => reject(ticket.ticket_code)}
                       disabled={ticket.status === "rejected"}
                       className="rounded-lg p-2 text-danger hover:bg-danger/10 disabled:opacity-30"
                       aria-label="Reject"
                     >
                       <XCircle size={18} />
                     </button>
+                    {ticket.status === "rejected" && (
+                      <button
+                        onClick={() => editReason(ticket.ticket_code, ticket.admin_note)}
+                        className="rounded-lg p-2 text-muted hover:bg-panel hover:text-teal"
+                        aria-label="Edit rejection reason"
+                      >
+                        <Pencil size={18} />
+                      </button>
+                    )}
                     <button
                       onClick={() => updateStatus(ticket.ticket_code, "pending")}
                       disabled={ticket.status === "pending"}

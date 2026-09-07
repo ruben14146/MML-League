@@ -85,7 +85,7 @@ export default function StatusChecker() {
             )}
             {result.admin_note && (
               <p className="mt-3 rounded-lg bg-panel p-3 text-sm text-foreground/90">
-                Staff note: {result.admin_note}
+                {result.status === "rejected" ? "Rejection reason" : "Staff note"}: {result.admin_note}
               </p>
             )}
           </div>
