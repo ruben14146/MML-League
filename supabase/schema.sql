@@ -70,3 +70,18 @@ create table if not exists staff_roles (
   granted_by text,
   created_at timestamptz not null default now()
 );
+
+-- Banned Discord IDs. A ban can be entered before someone has ever signed
+-- in (pure Discord ID) or against a user with existing tickets. Checked at
+-- sign-in (blocks login outright) and again on ticket creation as
+-- defense-in-depth.
+create table if not exists banned_users (
+  id uuid primary key default gen_random_uuid(),
+  discord_id text not null unique,
+  discord_username text,
+  reason text,
+  banned_by text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists banned_users_discord_id_idx on banned_users (discord_id);

@@ -9,6 +9,7 @@ import {
   ExternalLink,
   Monitor,
   PackageCheck,
+  Ban,
 } from "lucide-react";
 import type { TicketRow, TicketStatus } from "@/lib/db.types";
 
@@ -47,6 +48,7 @@ export default function TicketsTable() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
   const [bulkRunning, setBulkRunning] = useState<TicketStatus | null>(null);
+  const [banning, setBanning] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -71,6 +73,24 @@ export default function TicketsTable() {
     });
     await load();
     setUpdating(null);
+  }
+
+  async function banUser(discordId: string, discordUsername: string) {
+    if (!confirm(`Ban ${discordUsername} (${discordId})? They won't be able to sign in or submit tickets.`)) {
+      return;
+    }
+    setBanning(discordId);
+    try {
+      const res = await fetch("/api/bans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ discord_id: discordId, discord_username: discordUsername }),
+      });
+      const data = await res.json();
+      if (!res.ok) alert(data.error ?? "Something went wrong");
+    } finally {
+      setBanning(null);
+    }
   }
 
   async function bulkUpdate(target: "sent_on_dash" | "sent_to_lockers") {
@@ -238,6 +258,20 @@ export default function TicketsTable() {
                     >
                       <PackageCheck size={18} />
                     </button>
+                    {ticket.discord_id && (
+                      <button
+                        onClick={() => banUser(ticket.discord_id!, ticket.discord_username)}
+                        disabled={banning === ticket.discord_id}
+                        className="rounded-lg p-2 text-danger hover:bg-danger/10 disabled:opacity-30"
+                        aria-label="Ban user"
+                      >
+                        {banning === ticket.discord_id ? (
+                          <Loader2 size={18} className="animate-spin" />
+                        ) : (
+                          <Ban size={18} />
+                        )}
+                      </button>
+                    )}
                   </>
                 )}
               </div>

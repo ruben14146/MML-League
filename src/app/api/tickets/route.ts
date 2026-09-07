@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { requireStaffSession } from "@/lib/admin";
 import { supabaseAdmin } from "@/lib/supabase";
 import { serverError } from "@/lib/http";
+import { isBanned } from "@/lib/bans";
 import {
   generateTicketCode,
   isValidDiscordMessageLink,
@@ -42,6 +43,12 @@ export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.discordUsername) {
     return NextResponse.json({ error: "You must sign in with Discord first." }, { status: 401 });
+  }
+  // Defense-in-depth: the sign-in callback already blocks banned Discord
+  // IDs from getting a session at all, but a ban can also land while
+  // someone still holds an existing session cookie.
+  if (await isBanned(session.user.discordId)) {
+    return NextResponse.json({ error: "Your account has been banned." }, { status: 403 });
   }
 
   const body = await request.json();

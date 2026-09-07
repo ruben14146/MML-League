@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Discord from "next-auth/providers/discord";
+import { isBanned } from "@/lib/bans";
 
 interface DiscordProfileRaw {
   id: string;
@@ -29,6 +30,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   // staff admin panel, so a stolen session cookie should go stale sooner.
   session: { strategy: "jwt", maxAge: 7 * 24 * 60 * 60, updateAge: 24 * 60 * 60 },
   callbacks: {
+    // Blocks sign-in outright for a banned Discord ID — works whether the
+    // ban was entered before this person ever created a session or against
+    // someone who already has one (their next sign-in attempt is refused).
+    async signIn({ user }) {
+      const discordId = (user as { discordId?: string }).discordId;
+      if (await isBanned(discordId)) return false;
+      return true;
+    },
     async jwt({ token, user }) {
       if (user) {
         token.discordId = (user as { discordId?: string }).discordId;

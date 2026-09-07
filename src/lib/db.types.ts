@@ -47,6 +47,15 @@ export type StaffRoleRow = {
   created_at: string;
 };
 
+export type BannedUserRow = {
+  id: string;
+  discord_id: string;
+  discord_username: string | null;
+  reason: string | null;
+  banned_by: string | null;
+  created_at: string;
+};
+
 type Table<Row, Insert, Update> = {
   Row: Row;
   Insert: Insert;
@@ -81,6 +90,11 @@ export type Database = {
         StaffRoleRow,
         Partial<StaffRoleRow> & { discord_id: string; role: StaffRole },
         Partial<StaffRoleRow>
+      >;
+      banned_users: Table<
+        BannedUserRow,
+        Partial<BannedUserRow> & { discord_id: string },
+        Partial<BannedUserRow>
       >;
     };
     Views: Record<string, never>;
