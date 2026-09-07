@@ -11,11 +11,13 @@ import {
   PackageCheck,
   Ban,
   Pencil,
+  AlertTriangle,
 } from "lucide-react";
 import type { TicketRow, TicketStatus } from "@/lib/db.types";
 
 type TicketWithItem = TicketRow & {
   ticket_items: { name: string; image_url: string | null } | null;
+  link_reuse_count: number;
 };
 
 const FILTERS: (TicketStatus | "all")[] = [
@@ -199,6 +201,12 @@ export default function TicketsTable() {
                     {ticket.location === "outside"
                       ? `Outside MML (${ticket.league_name})`
                       : "Inside MML"}
+                    {ticket.player_id && (
+                      <>
+                        {" "}
+                        &middot; Player ID: <span className="font-mono text-foreground">{ticket.player_id}</span>
+                      </>
+                    )}
                   </p>
                   <a
                     href={ticket.discord_message_link}
@@ -208,6 +216,12 @@ export default function TicketsTable() {
                   >
                     Message link <ExternalLink size={11} />
                   </a>
+                  {ticket.link_reuse_count > 1 && (
+                    <span className="mt-1 ml-3 inline-flex items-center gap-1 text-xs text-danger">
+                      <AlertTriangle size={11} />
+                      Link used {ticket.link_reuse_count}x — possible scam
+                    </span>
+                  )}
                   {ticket.server_link && (
                     <a
                       href={ticket.server_link}

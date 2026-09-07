@@ -28,6 +28,7 @@ export type TicketRow = {
   discord_username: string;
   discord_id: string | null;
   discord_message_link: string;
+  player_id: string | null;
   item_id: string | null;
   location: TicketLocation;
   league_name: string | null;

@@ -7,9 +7,14 @@ import { isBanned } from "@/lib/bans";
 import {
   generateTicketCode,
   isValidDiscordMessageLink,
+  isValidPlayerId,
   isValidServerLink,
 } from "@/lib/tickets";
-import type { TicketStatus } from "@/lib/db.types";
+import type { TicketRow, TicketStatus } from "@/lib/db.types";
+
+type TicketWithItem = TicketRow & {
+  ticket_items: { name: string; image_url: string | null } | null;
+};
 
 const VALID_STATUSES: TicketStatus[] = [
   "pending",
@@ -36,7 +41,23 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await query;
   if (error) return serverError(error, "tickets.list");
-  return NextResponse.json({ tickets: data });
+
+  // Scam detection: flag when the same Discord message link (the "proof")
+  // has been used across more than one ticket, regardless of status —
+  // someone re-using proof from one event to claim multiple items.
+  const { data: allLinks } = await supabaseAdmin()
+    .from("tickets")
+    .select("discord_message_link");
+  const linkCounts = new Map<string, number>();
+  for (const row of allLinks ?? []) {
+    linkCounts.set(row.discord_message_link, (linkCounts.get(row.discord_message_link) ?? 0) + 1);
+  }
+  const tickets = ((data ?? []) as TicketWithItem[]).map((ticket) => ({
+    ...ticket,
+    link_reuse_count: linkCounts.get(ticket.discord_message_link) ?? 1,
+  }));
+
+  return NextResponse.json({ tickets });
 }
 
 export async function POST(request: NextRequest) {
@@ -53,6 +74,7 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   const itemId = String(body.item_id ?? "").trim();
+  const playerId = String(body.player_id ?? "").trim();
   const discordMessageLink = String(body.discord_message_link ?? "").trim();
   const location = body.location === "outside" ? "outside" : "inside";
   const leagueName = location === "outside" ? String(body.league_name ?? "").trim() : null;
@@ -60,6 +82,12 @@ export async function POST(request: NextRequest) {
 
   if (!itemId) {
     return NextResponse.json({ error: "Pick an item first." }, { status: 400 });
+  }
+  if (!isValidPlayerId(playerId)) {
+    return NextResponse.json(
+      { error: "Enter a valid VRFS Player ID (numbers only)." },
+      { status: 400 }
+    );
   }
   if (!isValidDiscordMessageLink(discordMessageLink)) {
     return NextResponse.json(
@@ -88,6 +116,7 @@ export async function POST(request: NextRequest) {
         discord_username: session.user.discordUsername,
         discord_id: session.user.discordId ?? null,
         discord_message_link: discordMessageLink,
+        player_id: playerId,
         item_id: itemId,
         location,
         league_name: leagueName,

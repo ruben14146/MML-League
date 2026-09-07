@@ -21,3 +21,9 @@ const DISCORD_SERVER_LINK_RE =
 export function isValidServerLink(link: string) {
   return DISCORD_SERVER_LINK_RE.test(link.trim());
 }
+
+const PLAYER_ID_RE = /^\d{3,12}$/;
+
+export function isValidPlayerId(playerId: string) {
+  return PLAYER_ID_RE.test(playerId.trim());
+}

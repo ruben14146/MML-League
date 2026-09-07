@@ -27,6 +27,7 @@ create table if not exists tickets (
   discord_username text not null,
   discord_id text,
   discord_message_link text not null,
+  player_id text,
   item_id uuid references ticket_items(id) on delete set null,
   location text not null check (location in ('inside', 'outside')),
   league_name text,
@@ -39,6 +40,7 @@ create table if not exists tickets (
 
 create index if not exists tickets_ticket_code_idx on tickets (ticket_code);
 create index if not exists tickets_status_idx on tickets (status);
+create index if not exists tickets_discord_message_link_idx on tickets (discord_message_link);
 
 create or replace function set_updated_at()
 returns trigger as $$

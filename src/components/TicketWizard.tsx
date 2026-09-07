@@ -6,7 +6,7 @@ import { signIn, useSession } from "next-auth/react";
 import { CheckCircle2, Copy, Loader2, ArrowLeft, ArrowRight } from "lucide-react";
 import type { TicketItemRow, TicketLocation } from "@/lib/db.types";
 
-type Step = 0 | 1 | 2 | 3 | 4;
+type Step = 0 | 1 | 2 | 3 | 4 | 5;
 
 export default function TicketWizard() {
   const { data: session, status } = useSession();
@@ -15,6 +15,7 @@ export default function TicketWizard() {
   const [itemsLoading, setItemsLoading] = useState(true);
 
   const [itemId, setItemId] = useState("");
+  const [playerId, setPlayerId] = useState("");
   const [messageLink, setMessageLink] = useState("");
   const [location, setLocation] = useState<TicketLocation | "">("");
   const [leagueName, setLeagueName] = useState("");
@@ -32,7 +33,7 @@ export default function TicketWizard() {
       .finally(() => setItemsLoading(false));
   }, []);
 
-  const maxStep: Step = location === "outside" ? 4 : 3;
+  const maxStep: Step = location === "outside" ? 5 : 4;
 
   function next() {
     setError(null);
@@ -52,6 +53,7 @@ export default function TicketWizard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           item_id: itemId,
+          player_id: playerId,
           discord_message_link: messageLink,
           location,
           league_name: leagueName,
@@ -186,6 +188,22 @@ export default function TicketWizard() {
 
             {step === 1 && (
               <div>
+                <h2 className="text-lg font-semibold">Your VRFS Player ID</h2>
+                <p className="mt-1 text-sm text-muted">
+                  So we know exactly who to send this item to in-game.
+                </p>
+                <input
+                  value={playerId}
+                  onChange={(e) => setPlayerId(e.target.value)}
+                  placeholder="e.g. 217174"
+                  inputMode="numeric"
+                  className="mt-6 w-full rounded-lg border border-panel-border bg-background-elevated px-4 py-3 text-sm outline-none focus:border-teal"
+                />
+              </div>
+            )}
+
+            {step === 2 && (
+              <div>
                 <h2 className="text-lg font-semibold">Your Discord</h2>
                 <p className="mt-1 text-sm text-muted">
                   Auto-filled from your Discord sign-in.
@@ -196,7 +214,7 @@ export default function TicketWizard() {
               </div>
             )}
 
-            {step === 2 && (
+            {step === 3 && (
               <div>
                 <h2 className="text-lg font-semibold">Discord message link</h2>
                 <p className="mt-1 text-sm text-muted">
@@ -211,7 +229,7 @@ export default function TicketWizard() {
               </div>
             )}
 
-            {step === 3 && (
+            {step === 4 && (
               <div>
                 <h2 className="text-lg font-semibold">Where was this hosted?</h2>
                 <p className="mt-1 text-sm text-muted">
@@ -235,7 +253,7 @@ export default function TicketWizard() {
               </div>
             )}
 
-            {step === 4 && location === "outside" && (
+            {step === 5 && location === "outside" && (
               <div className="flex flex-col gap-4">
                 <div>
                   <h2 className="text-lg font-semibold">Outside league details</h2>
@@ -281,8 +299,9 @@ export default function TicketWizard() {
               onClick={next}
               disabled={
                 (step === 0 && !itemId) ||
-                (step === 2 && !messageLink.trim()) ||
-                (step === 3 && !location)
+                (step === 1 && !playerId.trim()) ||
+                (step === 3 && !messageLink.trim()) ||
+                (step === 4 && !location)
               }
               className="flex items-center gap-1 rounded-lg bg-gradient-to-r from-teal to-pink px-5 py-2.5 text-sm font-semibold text-background disabled:opacity-40"
             >
