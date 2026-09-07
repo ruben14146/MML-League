@@ -1,0 +1,60 @@
+-- MML League schema
+-- Run this in the Supabase SQL editor (or `supabase db push`) once your
+-- project is created. All reads/writes happen through the Next.js server
+-- using the service role key, so Row Level Security stays off by default —
+-- if you later add direct client access, enable RLS and add policies first.
+
+create extension if not exists "pgcrypto";
+
+create table if not exists ticket_items (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  image_url text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists store_items (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  image_url text,
+  description text,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists tickets (
+  id uuid primary key default gen_random_uuid(),
+  ticket_code text not null unique,
+  discord_username text not null,
+  discord_id text,
+  discord_message_link text not null,
+  item_id uuid references ticket_items(id) on delete set null,
+  location text not null check (location in ('inside', 'outside')),
+  league_name text,
+  server_link text,
+  status text not null default 'pending' check (status in ('pending', 'accepted', 'rejected')),
+  admin_note text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists tickets_ticket_code_idx on tickets (ticket_code);
+create index if not exists tickets_status_idx on tickets (status);
+
+create or replace function set_updated_at()
+returns trigger as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$ language plpgsql;
+
+drop trigger if exists tickets_set_updated_at on tickets;
+create trigger tickets_set_updated_at
+  before update on tickets
+  for each row
+  execute function set_updated_at();
+
+-- Storage bucket for item images uploaded from the admin panel.
+insert into storage.buckets (id, name, public)
+values ('item-images', 'item-images', true)
+on conflict (id) do nothing;
