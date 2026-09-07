@@ -35,7 +35,10 @@ export default function Home() {
       <section className="flex flex-col items-center gap-6 text-center">
         <Logo size={96} />
         <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
-          <span className="glow-text text-teal">MML</span> League
+          <span className="glow-text bg-gradient-to-b from-pink to-teal bg-clip-text text-transparent">
+            MML
+          </span>{" "}
+          League
         </h1>
         <p className="max-w-xl text-balance text-muted">
           The home where you can claim your MML Items from winning events
