@@ -33,7 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             <Nav />
             <main className="flex-1">{children}</main>
             <footer className="border-t border-panel-border px-5 py-6 text-center text-xs text-muted">
-              MML League &middot; built for the community
+              MML - Manchester Milan League
             </footer>
           </div>
         </Providers>
