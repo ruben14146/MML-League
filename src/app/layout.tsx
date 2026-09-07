@@ -20,6 +20,11 @@ export const metadata: Metadata = {
   description: "Manchester Milan League — ticket system, roster items, and staff tools.",
 };
 
+// Required for nonce-based CSP: the nonce is generated per-request in
+// proxy.ts and can only be embedded in dynamically rendered HTML (a
+// statically prerendered page has no request to read it from).
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
