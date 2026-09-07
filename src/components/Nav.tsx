@@ -8,6 +8,7 @@ import { Menu, X, LogOut } from "lucide-react";
 import Logo from "./Logo";
 
 const LINKS = [
+  { href: "/", label: "Home" },
   { href: "/tickets/new", label: "Ticket System" },
   { href: "/tickets/status", label: "Check Status" },
   { href: "/items", label: "Our Items" },
@@ -29,7 +30,8 @@ export default function Nav() {
 
         <nav className="hidden items-center gap-1 md:flex">
           {LINKS.map((link) => {
-            const active = pathname?.startsWith(link.href);
+            const active =
+              link.href === "/" ? pathname === "/" : pathname?.startsWith(link.href);
             return (
               <Link
                 key={link.href}

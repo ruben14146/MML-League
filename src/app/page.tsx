@@ -38,8 +38,7 @@ export default function Home() {
           <span className="glow-text text-teal">MML</span> League
         </h1>
         <p className="max-w-xl text-balance text-muted">
-          The home for MML tickets, event verification, and league items.
-          Sign in with Discord to open a ticket or check where yours stands.
+          The home where you can claim your MML Items from winning events
         </p>
         <Link
           href="/tickets/new"
