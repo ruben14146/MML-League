@@ -39,6 +39,25 @@ function clientIp(request: NextRequest): string {
   return request.headers.get("x-real-ip") ?? "unknown";
 }
 
+// Dynamic routes embed an ID/code in the URL itself, so rate-limiting by
+// raw pathname is a no-op against them — every guessed value looks like a
+// brand-new path with its own fresh counter. Collapse each dynamic segment
+// to a placeholder so all attempts against a route share one bucket.
+function normalizePath(pathname: string): string {
+  if (/^\/api\/tickets\/(?!bulk-status$)[^/]+$/.test(pathname)) return "/api/tickets/:code";
+  if (/^\/api\/staff\/[^/]+$/.test(pathname)) return "/api/staff/:discordId";
+  if (/^\/api\/bans\/[^/]+$/.test(pathname)) return "/api/bans/:discordId";
+  if (/^\/api\/ticket-items\/[^/]+$/.test(pathname)) return "/api/ticket-items/:id";
+  if (/^\/api\/store-items\/[^/]+$/.test(pathname)) return "/api/store-items/:id";
+  return pathname;
+}
+
+// Public, unauthenticated, and directly enumerable (short random codes) —
+// this is the route most worth capping harder than the general default.
+const ROUTE_LIMITS: Record<string, number> = {
+  "/api/tickets/:code": 20,
+};
+
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 // Ticket creation is the highest-value public abuse target (spamming
@@ -106,8 +125,10 @@ export async function proxy(request: NextRequest) {
 
   if (isApi && !isAuthApi) {
     const ip = clientIp(request);
+    const routeKey = normalizePath(pathname);
+    const routeLimit = ROUTE_LIMITS[routeKey] ?? GENERAL_LIMIT;
 
-    if (checkLimit(`${ip}:${pathname}`, GENERAL_LIMIT, WINDOW_MS)) {
+    if (checkLimit(`${ip}:${routeKey}`, routeLimit, WINDOW_MS)) {
       return applySecurityHeaders(
         NextResponse.json(
           { error: "Too many requests, slow down and try again shortly." },
