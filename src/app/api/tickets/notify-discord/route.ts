@@ -9,8 +9,8 @@ type TicketWithItem = TicketRow & { ticket_items: { name: string } | null };
 
 // Staff: post every accepted ticket to the fulfillment Discord webhook,
 // grouped by item (item order matches the same alphabetical order shown on
-// the fulfillment page) as "player id | username | item | message link"
-// lines, chunked to stay under Discord's message length limit.
+// the fulfillment page) as "id | user | msg link | item name" lines,
+// chunked to stay under Discord's message length limit.
 export async function POST() {
   const staff = await requireStaffSession();
   if (!staff) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -43,7 +43,7 @@ export async function POST() {
     if (!byItem.has(key)) byItem.set(key, { name, lines: [] });
     byItem
       .get(key)!
-      .lines.push(`${ticket.player_id ?? "—"} | ${ticket.discord_username} | ${name} | ${ticket.discord_message_link}`);
+      .lines.push(`${ticket.player_id ?? "—"} | ${ticket.discord_username} | ${ticket.discord_message_link} | ${name}`);
   }
   const groups = Array.from(byItem.values()).sort((a, b) => a.name.localeCompare(b.name));
   const batches = buildDiscordBatches(groups);
