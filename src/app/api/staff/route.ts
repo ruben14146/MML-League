@@ -26,13 +26,15 @@ export async function GET() {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  const dbByDiscordId = new Map((data ?? []).map((row) => [row.discord_id, row]));
+
   const bootstrap = bootstrapDevelopers().map((discordId) => ({
     id: `bootstrap-${discordId}`,
     discord_id: discordId,
-    discord_username: null,
+    discord_username: dbByDiscordId.get(discordId)?.discord_username ?? null,
     role: "developer" as StaffRole,
     granted_by: null,
-    created_at: null,
+    created_at: dbByDiscordId.get(discordId)?.created_at ?? null,
     bootstrap: true,
   }));
 

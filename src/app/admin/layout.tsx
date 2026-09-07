@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { requireStaffSession } from "@/lib/admin";
+import { syncStaffUsername } from "@/lib/roles";
 import { ShieldAlert } from "lucide-react";
 import AdminNav from "@/components/admin/AdminNav";
 
@@ -41,6 +42,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </Link>
       </div>
     );
+  }
+
+  if (session.user?.discordId && session.user?.discordUsername) {
+    await syncStaffUsername(session.user.discordId, session.user.discordUsername, staff.role);
   }
 
   return (

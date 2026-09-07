@@ -48,3 +48,21 @@ export function canManageRole(actor: StaffRole, target: StaffRole) {
 export function grantableRoles(actor: StaffRole): StaffRole[] {
   return GRANTABLE[actor];
 }
+
+// Keeps staff_roles.discord_username fresh from the signed-in session, so
+// the staff list can display real usernames instead of "Unknown username" —
+// nothing else populates that column automatically. Safe to call for
+// bootstrap developers too: their effective role always comes from
+// isBootstrapDeveloper regardless of what's stored here.
+export async function syncStaffUsername(
+  discordId: string,
+  discordUsername: string,
+  role: StaffRole
+) {
+  await supabaseAdmin()
+    .from("staff_roles")
+    .upsert(
+      { discord_id: discordId, discord_username: discordUsername, role },
+      { onConflict: "discord_id" }
+    );
+}
