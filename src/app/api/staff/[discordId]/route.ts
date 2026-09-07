@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { requireStaffSession } from "@/lib/admin";
 import { canManageRole, isBootstrapDeveloper } from "@/lib/roles";
+import { serverError } from "@/lib/http";
 
 export async function DELETE(
   _request: NextRequest,
@@ -36,6 +37,6 @@ export async function DELETE(
   }
 
   const { error } = await supabaseAdmin().from("staff_roles").delete().eq("discord_id", discordId);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverError(error, "staff.revoke");
   return NextResponse.json({ ok: true });
 }

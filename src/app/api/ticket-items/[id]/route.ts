@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { requireStaffSession } from "@/lib/admin";
+import { serverError } from "@/lib/http";
 import type { TicketItemRow } from "@/lib/db.types";
 
 export async function PATCH(
@@ -25,7 +26,7 @@ export async function PATCH(
     .select("*")
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverError(error, "ticketItems.update");
   return NextResponse.json({ item: data });
 }
 
@@ -39,6 +40,6 @@ export async function DELETE(
   const { id } = await params;
   const { error } = await supabaseAdmin().from("ticket_items").delete().eq("id", id);
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverError(error, "ticketItems.delete");
   return NextResponse.json({ ok: true });
 }

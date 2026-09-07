@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { requireStaffSession } from "@/lib/admin";
 import { supabaseAdmin } from "@/lib/supabase";
+import { serverError } from "@/lib/http";
 import {
   generateTicketCode,
   isValidDiscordMessageLink,
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
   }
 
   const { data, error } = await query;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverError(error, "tickets.list");
   return NextResponse.json({ tickets: data });
 }
 
@@ -93,7 +94,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ticket: data }, { status: 201 });
     }
     if (!String(error.message).includes("duplicate key")) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return serverError(error, "tickets.create");
     }
   }
 

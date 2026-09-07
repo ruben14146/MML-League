@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { requireStaffSession } from "@/lib/admin";
+import { serverError } from "@/lib/http";
 
 export async function GET() {
   const { data, error } = await supabaseAdmin()
@@ -8,7 +9,7 @@ export async function GET() {
     .select("*")
     .order("created_at", { ascending: true });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverError(error, "ticketItems.list");
   return NextResponse.json({ items: data });
 }
 
@@ -28,6 +29,6 @@ export async function POST(request: NextRequest) {
     .select("*")
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverError(error, "ticketItems.create");
   return NextResponse.json({ item: data }, { status: 201 });
 }

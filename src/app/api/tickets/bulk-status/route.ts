@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { requireStaffSession } from "@/lib/admin";
+import { serverError } from "@/lib/http";
 import type { TicketStatus } from "@/lib/db.types";
 
 // The only two bulk transitions the admin panel offers: every accepted
@@ -30,6 +31,6 @@ export async function POST(request: NextRequest) {
     .eq("status", fromStatus)
     .select("id");
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverError(error, "tickets.bulkStatus");
   return NextResponse.json({ updated: data?.length ?? 0 });
 }

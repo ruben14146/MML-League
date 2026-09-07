@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { requireStaffSession } from "@/lib/admin";
+import { serverError } from "@/lib/http";
 import type { TicketRow, TicketStatus } from "@/lib/db.types";
 
 const VALID_STATUSES: TicketStatus[] = [
@@ -29,7 +30,7 @@ export async function GET(
     .eq("ticket_code", normalizeCode(code))
     .maybeSingle();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverError(error, "tickets.lookup");
   if (!data) return NextResponse.json({ error: "No ticket found with that ID." }, { status: 404 });
 
   return NextResponse.json({ ticket: data });
@@ -62,6 +63,6 @@ export async function PATCH(
     .select("*")
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverError(error, "tickets.updateStatus");
   return NextResponse.json({ ticket: data });
 }

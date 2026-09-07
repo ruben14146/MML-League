@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import { requireStaffSession } from "@/lib/admin";
 import { canManageRole, isBootstrapDeveloper } from "@/lib/roles";
+import { serverError } from "@/lib/http";
 import type { StaffRole } from "@/lib/db.types";
 
 const VALID_ROLES: StaffRole[] = ["developer", "owner", "admin"];
+// Discord snowflake IDs are 17-20 digit numbers.
+const DISCORD_ID_RE = /^\d{17,20}$/;
 
 function bootstrapDevelopers() {
   return (process.env.ADMIN_DISCORD_IDS ?? "")
@@ -24,7 +27,7 @@ export async function GET() {
     .select("*")
     .order("created_at", { ascending: true });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverError(error, "staff.list");
 
   const dbByDiscordId = new Map((data ?? []).map((row) => [row.discord_id, row]));
 
@@ -55,8 +58,8 @@ export async function POST(request: NextRequest) {
   const discordUsername = body.discord_username ? String(body.discord_username).trim() : null;
   const role = body.role as StaffRole;
 
-  if (!discordId) {
-    return NextResponse.json({ error: "Discord ID is required" }, { status: 400 });
+  if (!DISCORD_ID_RE.test(discordId)) {
+    return NextResponse.json({ error: "Enter a valid Discord user ID (17-20 digits)." }, { status: 400 });
   }
   if (!VALID_ROLES.includes(role)) {
     return NextResponse.json({ error: "Invalid role" }, { status: 400 });
@@ -101,6 +104,6 @@ export async function POST(request: NextRequest) {
     .select("*")
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverError(error, "staff.grant");
   return NextResponse.json({ staff: data }, { status: 201 });
 }
