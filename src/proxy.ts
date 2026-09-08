@@ -43,8 +43,13 @@ function clientIp(request: NextRequest): string {
 // raw pathname is a no-op against them — every guessed value looks like a
 // brand-new path with its own fresh counter. Collapse each dynamic segment
 // to a placeholder so all attempts against a route share one bucket.
+// Static sub-routes under /api/tickets/ that must not be mistaken for a
+// dynamic ticket code.
+const TICKETS_STATIC_SUBROUTES = new Set(["bulk-status", "leagues", "notify-discord"]);
+
 function normalizePath(pathname: string): string {
-  if (/^\/api\/tickets\/(?!bulk-status$)[^/]+$/.test(pathname)) return "/api/tickets/:code";
+  const ticketsMatch = /^\/api\/tickets\/([^/]+)$/.exec(pathname);
+  if (ticketsMatch && !TICKETS_STATIC_SUBROUTES.has(ticketsMatch[1])) return "/api/tickets/:code";
   if (/^\/api\/staff\/[^/]+$/.test(pathname)) return "/api/staff/:discordId";
   if (/^\/api\/bans\/[^/]+$/.test(pathname)) return "/api/bans/:discordId";
   if (/^\/api\/ticket-items\/[^/]+$/.test(pathname)) return "/api/ticket-items/:id";

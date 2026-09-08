@@ -51,6 +51,8 @@ export default function TicketsTable() {
   const [filter, setFilter] = useState<TicketStatus | "all">("pending");
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
+  const [league, setLeague] = useState("all");
+  const [leagues, setLeagues] = useState<string[]>([]);
   const [tickets, setTickets] = useState<TicketWithItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -61,6 +63,7 @@ export default function TicketsTable() {
     setLoading(true);
     const params = new URLSearchParams({ status: filter });
     if (search.trim()) params.set("search", search.trim());
+    if (league !== "all") params.set("league", league);
     const res = await fetch(`/api/tickets?${params}`);
     const data = await res.json();
     setTickets(data.tickets ?? []);
@@ -71,7 +74,14 @@ export default function TicketsTable() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch-on-mount/filter-change
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, search]);
+  }, [filter, search, league]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial fetch-on-mount
+    fetch("/api/tickets/leagues")
+      .then((r) => r.json())
+      .then((d) => setLeagues(d.leagues ?? []));
+  }, []);
 
   // Debounce the search box so we're not firing a request per keystroke.
   useEffect(() => {
@@ -141,23 +151,38 @@ export default function TicketsTable() {
 
   return (
     <div>
-      <div className="relative">
-        <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-        <input
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          placeholder="Search by ticket code, Discord username/ID, or player ID..."
-          className="w-full rounded-lg border border-panel-border bg-background-elevated py-2.5 pl-9 pr-9 text-sm outline-none focus:border-teal"
-        />
-        {searchInput && (
-          <button
-            onClick={() => setSearchInput("")}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-teal"
-            aria-label="Clear search"
-          >
-            <X size={16} />
-          </button>
-        )}
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="relative flex-1">
+          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+          <input
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="Search by ticket code, Discord username/ID, or player ID..."
+            className="w-full rounded-lg border border-panel-border bg-background-elevated py-2.5 pl-9 pr-9 text-sm outline-none focus:border-teal"
+          />
+          {searchInput && (
+            <button
+              onClick={() => setSearchInput("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-teal"
+              aria-label="Clear search"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+
+        <select
+          value={league}
+          onChange={(e) => setLeague(e.target.value)}
+          className="rounded-lg border border-panel-border bg-background-elevated px-3 py-2.5 text-sm outline-none focus:border-teal sm:w-56"
+        >
+          <option value="all">All leagues</option>
+          {leagues.map((l) => (
+            <option key={l} value={l}>
+              {l}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">

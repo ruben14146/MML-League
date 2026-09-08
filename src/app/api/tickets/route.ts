@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
 
   const status = request.nextUrl.searchParams.get("status");
   const search = request.nextUrl.searchParams.get("search")?.trim();
+  const league = request.nextUrl.searchParams.get("league")?.trim();
   let query = supabaseAdmin()
     .from("tickets")
     .select("*, ticket_items(name, image_url)")
@@ -38,6 +39,10 @@ export async function GET(request: NextRequest) {
 
   if (status && VALID_STATUSES.includes(status as TicketStatus)) {
     query = query.eq("status", status as TicketStatus);
+  }
+
+  if (league) {
+    query = query.eq("league_name", league);
   }
 
   if (search) {
