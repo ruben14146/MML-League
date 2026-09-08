@@ -71,9 +71,31 @@ export async function GET(request: NextRequest) {
   for (const row of allLinks ?? []) {
     linkCounts.set(row.discord_message_link, (linkCounts.get(row.discord_message_link) ?? 0) + 1);
   }
-  const tickets = ((data ?? []) as TicketWithItem[]).map((ticket) => ({
+  // Notify staff when the ticket owner has the last word in the chat — the
+  // badge clears itself once staff sends a reply, since the latest message
+  // is theirs again. Simple "last message" heuristic rather than a
+  // per-viewer read-state table, which would be a lot of extra plumbing
+  // for the same practical result here.
+  const ticketRows = (data ?? []) as TicketWithItem[];
+  const ticketIds = ticketRows.map((t) => t.id);
+  const lastMessageIsFromUser = new Map<string, boolean>();
+  if (ticketIds.length > 0) {
+    const { data: msgs } = await supabaseAdmin()
+      .from("ticket_messages")
+      .select("ticket_id, is_staff, created_at")
+      .in("ticket_id", ticketIds)
+      .order("created_at", { ascending: false });
+    for (const m of msgs ?? []) {
+      if (!lastMessageIsFromUser.has(m.ticket_id)) {
+        lastMessageIsFromUser.set(m.ticket_id, !m.is_staff);
+      }
+    }
+  }
+
+  const tickets = ticketRows.map((ticket) => ({
     ...ticket,
     link_reuse_count: linkCounts.get(ticket.discord_message_link) ?? 1,
+    has_new_message: lastMessageIsFromUser.get(ticket.id) ?? false,
   }));
 
   return NextResponse.json({ tickets });

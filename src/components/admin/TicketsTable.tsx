@@ -23,6 +23,7 @@ import TicketChat from "@/components/TicketChat";
 type TicketWithItem = TicketRow & {
   ticket_items: { name: string; image_url: string | null } | null;
   link_reuse_count: number;
+  has_new_message: boolean;
 };
 
 const FILTERS: (TicketStatus | "all")[] = [
@@ -241,7 +242,12 @@ export default function TicketsTable() {
       ) : (
         <div className="mt-6 flex flex-col gap-3">
           {tickets.map((ticket) => (
-            <div key={ticket.id} className="panel flex flex-col gap-3 p-5">
+            <div
+              key={ticket.id}
+              className={`panel flex flex-col gap-3 p-5 ${
+                ticket.has_new_message ? "ring-1 ring-teal/60" : ""
+              }`}
+            >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-4">
                 {ticket.ticket_items?.image_url ? (
@@ -259,6 +265,12 @@ export default function TicketsTable() {
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium">{ticket.discord_username}</p>
                     {ticket.is_booster && <BoosterBadge />}
+                    {ticket.has_new_message && (
+                      <span className="flex items-center gap-1 rounded-full border border-teal-dim bg-teal/10 px-2 py-0.5 text-[10px] font-medium text-teal">
+                        <MessageCircle size={10} />
+                        New message
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-muted">
                     {ticket.ticket_items?.name ?? "Unknown item"} &middot;{" "}
@@ -381,15 +393,26 @@ export default function TicketsTable() {
                       </button>
                     )}
                     <button
-                      onClick={() =>
-                        setOpenChat(openChat === ticket.ticket_code ? null : ticket.ticket_code)
-                      }
-                      className={`rounded-lg p-2 hover:bg-teal/10 hover:text-teal ${
+                      onClick={() => {
+                        const opening = openChat !== ticket.ticket_code;
+                        setOpenChat(opening ? ticket.ticket_code : null);
+                        if (opening && ticket.has_new_message) {
+                          setTickets((prev) =>
+                            prev.map((t) =>
+                              t.id === ticket.id ? { ...t, has_new_message: false } : t
+                            )
+                          );
+                        }
+                      }}
+                      className={`relative rounded-lg p-2 hover:bg-teal/10 hover:text-teal ${
                         openChat === ticket.ticket_code ? "text-teal" : "text-muted"
                       }`}
                       aria-label="Chat with submitter"
                     >
                       <MessageCircle size={18} />
+                      {ticket.has_new_message && (
+                        <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-teal" />
+                      )}
                     </button>
                   </>
                 )}
