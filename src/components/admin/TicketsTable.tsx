@@ -14,8 +14,11 @@ import {
   AlertTriangle,
   Search,
   X,
+  MessageCircle,
 } from "lucide-react";
 import type { TicketRow, TicketStatus } from "@/lib/db.types";
+import BoosterBadge from "@/components/BoosterBadge";
+import TicketChat from "@/components/TicketChat";
 
 type TicketWithItem = TicketRow & {
   ticket_items: { name: string; image_url: string | null } | null;
@@ -58,6 +61,7 @@ export default function TicketsTable() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [bulkRunning, setBulkRunning] = useState<TicketStatus | null>(null);
   const [banning, setBanning] = useState<string | null>(null);
+  const [openChat, setOpenChat] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -237,7 +241,8 @@ export default function TicketsTable() {
       ) : (
         <div className="mt-6 flex flex-col gap-3">
           {tickets.map((ticket) => (
-            <div key={ticket.id} className="panel flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+            <div key={ticket.id} className="panel flex flex-col gap-3 p-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-4">
                 {ticket.ticket_items?.image_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -251,7 +256,10 @@ export default function TicketsTable() {
                 )}
                 <div>
                   <p className="font-mono text-sm text-teal">{ticket.ticket_code}</p>
-                  <p className="text-sm font-medium">{ticket.discord_username}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium">{ticket.discord_username}</p>
+                    {ticket.is_booster && <BoosterBadge />}
+                  </div>
                   <p className="text-xs text-muted">
                     {ticket.ticket_items?.name ?? "Unknown item"} &middot;{" "}
                     {ticket.location === "outside"
@@ -372,9 +380,22 @@ export default function TicketsTable() {
                         )}
                       </button>
                     )}
+                    <button
+                      onClick={() =>
+                        setOpenChat(openChat === ticket.ticket_code ? null : ticket.ticket_code)
+                      }
+                      className={`rounded-lg p-2 hover:bg-teal/10 hover:text-teal ${
+                        openChat === ticket.ticket_code ? "text-teal" : "text-muted"
+                      }`}
+                      aria-label="Chat with submitter"
+                    >
+                      <MessageCircle size={18} />
+                    </button>
                   </>
                 )}
               </div>
+              </div>
+              {openChat === ticket.ticket_code && <TicketChat ticketCode={ticket.ticket_code} />}
             </div>
           ))}
         </div>

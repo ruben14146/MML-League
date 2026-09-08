@@ -4,6 +4,7 @@ import { requireStaffSession } from "@/lib/admin";
 import { supabaseAdmin } from "@/lib/supabase";
 import { serverError } from "@/lib/http";
 import { isBanned } from "@/lib/bans";
+import { isGuildBooster } from "@/lib/discordBot";
 import {
   generateTicketCode,
   isValidDiscordMessageLink,
@@ -35,6 +36,9 @@ export async function GET(request: NextRequest) {
   let query = supabaseAdmin()
     .from("tickets")
     .select("*, ticket_items(name, image_url)")
+    // Boosted tickets always float to the top of whatever view staff is
+    // looking at (most useful in the pending queue, but harmless elsewhere).
+    .order("is_booster", { ascending: false })
     .order("created_at", { ascending: false });
 
   if (status && VALID_STATUSES.includes(status as TicketStatus)) {
@@ -120,6 +124,7 @@ export async function POST(request: NextRequest) {
   }
 
   const db = supabaseAdmin();
+  const isBooster = await isGuildBooster(session.user.discordId);
 
   // Ticket codes are short and random — retry on the rare collision.
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -137,6 +142,7 @@ export async function POST(request: NextRequest) {
         league_name: leagueName,
         server_link: serverLink,
         status: "pending",
+        is_booster: isBooster,
       })
       .select("*")
       .single();

@@ -36,6 +36,7 @@ export type TicketRow = {
   status: TicketStatus;
   admin_note: string | null;
   handled_by: string | null;
+  is_booster: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -55,6 +56,24 @@ export type BannedUserRow = {
   discord_username: string | null;
   reason: string | null;
   banned_by: string | null;
+  created_at: string;
+};
+
+export type TicketMessageRow = {
+  id: string;
+  ticket_id: string;
+  sender_discord_id: string;
+  sender_username: string;
+  is_staff: boolean;
+  body: string;
+  created_at: string;
+};
+
+export type StaffMessageRow = {
+  id: string;
+  sender_discord_id: string;
+  sender_username: string;
+  body: string;
   created_at: string;
 };
 
@@ -97,6 +116,16 @@ export type Database = {
         BannedUserRow,
         Partial<BannedUserRow> & { discord_id: string },
         Partial<BannedUserRow>
+      >;
+      ticket_messages: Table<
+        TicketMessageRow,
+        Partial<TicketMessageRow> & { ticket_id: string; sender_discord_id: string; sender_username: string; body: string },
+        Partial<TicketMessageRow>
+      >;
+      staff_messages: Table<
+        StaffMessageRow,
+        Partial<StaffMessageRow> & { sender_discord_id: string; sender_username: string; body: string },
+        Partial<StaffMessageRow>
       >;
     };
     Views: Record<string, never>;

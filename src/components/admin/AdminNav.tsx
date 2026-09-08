@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Ticket, Boxes, Users, Ban, PackageCheck } from "lucide-react";
+import { LayoutDashboard, Ticket, Boxes, Users, Ban, PackageCheck, MessageCircle } from "lucide-react";
 
 const LINKS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -11,6 +11,7 @@ const LINKS = [
   { href: "/admin/items", label: "Items", icon: Boxes },
   { href: "/admin/staff", label: "Staff", icon: Users },
   { href: "/admin/bans", label: "Bans", icon: Ban },
+  { href: "/admin/chat", label: "Chat", icon: MessageCircle },
 ];
 
 export default function AdminNav() {

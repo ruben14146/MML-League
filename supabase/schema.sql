@@ -35,6 +35,7 @@ create table if not exists tickets (
   status text not null default 'pending' check (status in ('pending', 'accepted', 'rejected', 'sent_on_dash', 'sent_to_lockers')),
   admin_note text,
   handled_by text,
+  is_booster boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -88,3 +89,27 @@ create table if not exists banned_users (
 );
 
 create index if not exists banned_users_discord_id_idx on banned_users (discord_id);
+
+-- Per-ticket chat between the submitter and staff.
+create table if not exists ticket_messages (
+  id uuid primary key default gen_random_uuid(),
+  ticket_id uuid not null references tickets(id) on delete cascade,
+  sender_discord_id text not null,
+  sender_username text not null,
+  is_staff boolean not null default false,
+  body text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists ticket_messages_ticket_id_idx on ticket_messages (ticket_id);
+
+-- Staff-only general chat.
+create table if not exists staff_messages (
+  id uuid primary key default gen_random_uuid(),
+  sender_discord_id text not null,
+  sender_username text not null,
+  body text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists staff_messages_created_at_idx on staff_messages (created_at);

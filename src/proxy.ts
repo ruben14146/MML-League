@@ -46,11 +46,20 @@ function clientIp(request: NextRequest): string {
 // Static sub-routes under /api/tickets/ that must not be mistaken for a
 // dynamic ticket code.
 const TICKETS_STATIC_SUBROUTES = new Set(["bulk-status", "leagues", "notify-discord"]);
+// Static sub-routes under /api/staff/ that must not be mistaken for a
+// dynamic Discord ID.
+const STAFF_STATIC_SUBROUTES = new Set(["chat"]);
 
 function normalizePath(pathname: string): string {
+  const ticketMessagesMatch = /^\/api\/tickets\/[^/]+\/messages$/.exec(pathname);
+  if (ticketMessagesMatch) return "/api/tickets/:code/messages";
+
   const ticketsMatch = /^\/api\/tickets\/([^/]+)$/.exec(pathname);
   if (ticketsMatch && !TICKETS_STATIC_SUBROUTES.has(ticketsMatch[1])) return "/api/tickets/:code";
-  if (/^\/api\/staff\/[^/]+$/.test(pathname)) return "/api/staff/:discordId";
+
+  const staffMatch = /^\/api\/staff\/([^/]+)$/.exec(pathname);
+  if (staffMatch && !STAFF_STATIC_SUBROUTES.has(staffMatch[1])) return "/api/staff/:discordId";
+
   if (/^\/api\/bans\/[^/]+$/.test(pathname)) return "/api/bans/:discordId";
   if (/^\/api\/ticket-items\/[^/]+$/.test(pathname)) return "/api/ticket-items/:id";
   if (/^\/api\/store-items\/[^/]+$/.test(pathname)) return "/api/store-items/:id";

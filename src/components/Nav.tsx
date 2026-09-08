@@ -51,7 +51,10 @@ export default function Nav() {
         <div className="hidden items-center gap-3 md:flex">
           {status === "authenticated" ? (
             <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 rounded-full border border-panel-border bg-panel px-3 py-1.5 text-sm">
+              <Link
+                href="/account"
+                className="flex items-center gap-2 rounded-full border border-panel-border bg-panel px-3 py-1.5 text-sm transition-colors hover:border-teal-dim"
+              >
                 {session.user?.image && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -63,7 +66,7 @@ export default function Nav() {
                 <span className="text-foreground/90">
                   {session.user?.discordUsername}
                 </span>
-              </div>
+              </Link>
               <button
                 onClick={() => signOut()}
                 className="rounded-lg p-2 text-muted hover:text-danger"
@@ -107,12 +110,21 @@ export default function Nav() {
           </nav>
           <div className="mt-3 border-t border-panel-border pt-3">
             {status === "authenticated" ? (
-              <button
-                onClick={() => signOut()}
-                className="flex items-center gap-2 text-sm text-danger"
-              >
-                <LogOut size={16} /> Sign out ({session.user?.discordUsername})
-              </button>
+              <div className="flex flex-col gap-2">
+                <Link
+                  href="/account"
+                  onClick={() => setOpen(false)}
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-foreground/90 hover:bg-panel hover:text-teal"
+                >
+                  Account
+                </Link>
+                <button
+                  onClick={() => signOut()}
+                  className="flex items-center gap-2 px-3 text-sm text-danger"
+                >
+                  <LogOut size={16} /> Sign out ({session.user?.discordUsername})
+                </button>
+              </div>
             ) : (
               <button
                 onClick={() => signIn("discord")}
