@@ -37,8 +37,9 @@ export default function ItemsGrid() {
   const has3D = !!(selected?.model_url && selected?.model_type);
 
   useEffect(() => {
-    // Switching items always starts back on the photo, at neutral brightness.
-    setMode("photo");
+    // Jump straight into 3D for items that have a model — no extra click
+    // needed — and always reset to neutral brightness on switch.
+    setMode(has3D ? "3d" : "photo");
     setBrightness(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
