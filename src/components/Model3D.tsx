@@ -1,8 +1,9 @@
 "use client";
 
-import { Suspense, useEffect, useMemo } from "react";
+import { Suspense, useEffect, useMemo, useRef } from "react";
 import { Canvas, useLoader } from "@react-three/fiber";
-import { OrbitControls, useTexture, Center, Bounds } from "@react-three/drei";
+import { OrbitControls, useTexture } from "@react-three/drei";
+import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
 import * as THREE from "three";
@@ -36,9 +37,6 @@ function Model({ modelUrl, modelType, colorMapUrl, normalMapUrl, metallicMapUrl 
   const cloned = useMemo(() => object.clone(true), [object]);
 
   useEffect(() => {
-    for (const t of Object.values(textures)) {
-      t.colorSpace = THREE.SRGBColorSpace;
-    }
     textures.map.colorSpace = THREE.SRGBColorSpace;
     textures.normalMap.colorSpace = THREE.NoColorSpace;
     textures.metalnessMap.colorSpace = THREE.NoColorSpace;
@@ -52,11 +50,29 @@ function Model({ modelUrl, modelType, colorMapUrl, normalMapUrl, metallicMapUrl 
           metalness: metallicMapUrl ? 1 : 0.15,
           roughness: 0.55,
           color: colorMapUrl ? undefined : new THREE.Color("#8fb8c9"),
+          // Exported models frequently have some inverted-normal faces —
+          // without this they render as solid black holes instead of the
+          // backside of the mesh.
+          side: THREE.DoubleSide,
         });
         child.castShadow = true;
         child.receiveShadow = true;
       }
     });
+
+    // FBX/OBJ exports carry wildly inconsistent units (cm vs m) and an
+    // arbitrary pivot, which throws off framing far more than any camera
+    // setting can compensate for. Normalize scale so the model's longest
+    // dimension is a fixed size, and re-center it on the origin, rather
+    // than trusting the file's own coordinates.
+    const box = new THREE.Box3().setFromObject(cloned);
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+    const scale = 1.6 / maxDim;
+    cloned.scale.setScalar(scale);
+
+    const center = box.getCenter(new THREE.Vector3()).multiplyScalar(scale);
+    cloned.position.set(-center.x, -center.y, -center.z);
   }, [cloned, textures, colorMapUrl, normalMapUrl, metallicMapUrl]);
 
   return <primitive object={cloned} />;
@@ -70,6 +86,27 @@ function Loading() {
   );
 }
 
+function Lighting({ brightness }: { brightness: number }) {
+  // Soft ambient fill so nothing goes fully black, plus a key light and
+  // two colored accent lights for a simple, flattering setup — kept as
+  // plain lights (no HDRI environment map) since the CSP doesn't allow
+  // fetching one from an external CDN. `brightness` scales all of them
+  // together from the slider in the viewer's controls.
+  return (
+    <>
+      <ambientLight intensity={0.5 * brightness} />
+      <directionalLight
+        position={[3, 4, 2]}
+        intensity={1.8 * brightness}
+        castShadow
+        shadow-mapSize={[1024, 1024]}
+      />
+      <pointLight position={[-3, 1.5, -2]} intensity={0.6 * brightness} color="#64ddff" />
+      <pointLight position={[0, -2, 3]} intensity={0.3 * brightness} color="#f6a9f3" />
+    </>
+  );
+}
+
 export default function Model3D({
   modelUrl,
   modelType,
@@ -77,42 +114,44 @@ export default function Model3D({
   normalMapUrl,
   metallicMapUrl,
   className,
-}: ModelProps & { className?: string }) {
+  brightness = 1,
+  autoRotate = false,
+  resetToken,
+}: ModelProps & {
+  className?: string;
+  brightness?: number;
+  autoRotate?: boolean;
+  /** Bump this value to snap the camera back to its default framing. */
+  resetToken?: number;
+}) {
+  const controlsRef = useRef<OrbitControlsImpl | null>(null);
+
+  useEffect(() => {
+    controlsRef.current?.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetToken]);
+
   return (
     <div className={`relative overflow-hidden rounded-lg bg-background-elevated ${className ?? ""}`}>
       <Suspense fallback={<Loading />}>
-        <Canvas shadows camera={{ position: [2.4, 1.8, 2.4], fov: 40 }} dpr={[1, 2]}>
-          {/* Soft ambient fill so nothing goes fully black, plus a key
-              light and a rim/fill light for a simple, flattering 3-point
-              setup — kept as plain lights (no HDRI environment map) since
-              the CSP doesn't allow fetching one from an external CDN. */}
-          <ambientLight intensity={0.45} />
-          <directionalLight
-            position={[3, 4, 2]}
-            intensity={1.6}
-            castShadow
-            shadow-mapSize={[1024, 1024]}
-          />
-          <pointLight position={[-3, 1.5, -2]} intensity={0.5} color="#64ddff" />
-          <pointLight position={[0, -2, 3]} intensity={0.25} color="#f6a9f3" />
+        <Canvas shadows camera={{ position: [2.2, 1.6, 2.2], fov: 45, near: 0.05, far: 100 }} dpr={[1, 2]}>
+          <Lighting brightness={brightness} />
 
-          <Bounds fit clip observe margin={1.3}>
-            <Center>
-              <Model
-                modelUrl={modelUrl}
-                modelType={modelType}
-                colorMapUrl={colorMapUrl}
-                normalMapUrl={normalMapUrl}
-                metallicMapUrl={metallicMapUrl}
-              />
-            </Center>
-          </Bounds>
+          <Model
+            modelUrl={modelUrl}
+            modelType={modelType}
+            colorMapUrl={colorMapUrl}
+            normalMapUrl={normalMapUrl}
+            metallicMapUrl={metallicMapUrl}
+          />
 
           <OrbitControls
+            ref={controlsRef}
             enablePan={false}
-            minDistance={1}
-            maxDistance={8}
-            autoRotate
+            minDistance={0.8}
+            maxDistance={6}
+            target={[0, 0, 0]}
+            autoRotate={autoRotate}
             autoRotateSpeed={1.2}
           />
         </Canvas>
