@@ -18,6 +18,12 @@ create table if not exists store_items (
   name text not null,
   image_url text,
   description text,
+  -- Optional 3D showcase: a model plus the texture maps applied to it.
+  model_url text,
+  model_type text check (model_type in ('obj', 'fbx')),
+  color_map_url text,
+  normal_map_url text,
+  metallic_map_url text,
   created_at timestamptz not null default now()
 );
 
@@ -113,3 +119,27 @@ create table if not exists staff_messages (
 );
 
 create index if not exists staff_messages_created_at_idx on staff_messages (created_at);
+
+-- Singleton row holding site-wide toggles (currently: tickets on/off).
+create table if not exists site_settings (
+  id boolean primary key default true,
+  tickets_enabled boolean not null default true,
+  tickets_disabled_reason text,
+  updated_by text,
+  updated_at timestamptz not null default now(),
+  constraint site_settings_singleton check (id)
+);
+
+insert into site_settings (id) values (true) on conflict (id) do nothing;
+
+drop trigger if exists site_settings_set_updated_at on site_settings;
+create trigger site_settings_set_updated_at
+  before update on site_settings
+  for each row
+  execute function set_updated_at();
+
+-- Dedicated public bucket for 3D model files (kept separate from
+-- item-images since these aren't images and can be much larger).
+insert into storage.buckets (id, name, public)
+values ('item-models', 'item-models', true)
+on conflict (id) do nothing;

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { signIn, useSession } from "next-auth/react";
-import { CheckCircle2, Copy, Loader2, ArrowLeft, ArrowRight } from "lucide-react";
+import { CheckCircle2, Copy, Loader2, ArrowLeft, ArrowRight, TicketX } from "lucide-react";
 import type { TicketItemRow, TicketLocation } from "@/lib/db.types";
 
 type Step = 0 | 1 | 2 | 3 | 4 | 5;
@@ -13,6 +13,9 @@ export default function TicketWizard() {
   const [step, setStep] = useState<Step>(0);
   const [items, setItems] = useState<TicketItemRow[]>([]);
   const [itemsLoading, setItemsLoading] = useState(true);
+  const [ticketsEnabled, setTicketsEnabled] = useState(true);
+  const [closedReason, setClosedReason] = useState<string | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(true);
 
   const [itemId, setItemId] = useState("");
   const [playerId, setPlayerId] = useState("");
@@ -31,6 +34,16 @@ export default function TicketWizard() {
       .then((r) => r.json())
       .then((d) => setItems(d.items ?? []))
       .finally(() => setItemsLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/settings/tickets")
+      .then((r) => r.json())
+      .then((d) => {
+        setTicketsEnabled(d.enabled ?? true);
+        setClosedReason(d.reason ?? null);
+      })
+      .finally(() => setSettingsLoading(false));
   }, []);
 
   const maxStep: Step = location === "outside" ? 5 : 4;
@@ -70,10 +83,22 @@ export default function TicketWizard() {
     }
   }
 
-  if (status === "loading") {
+  if (status === "loading" || settingsLoading) {
     return (
       <div className="flex justify-center py-24">
         <Loader2 className="animate-spin text-teal" size={28} />
+      </div>
+    );
+  }
+
+  if (!ticketsEnabled) {
+    return (
+      <div className="panel mx-auto mt-12 max-w-md p-8 text-center">
+        <TicketX className="mx-auto text-danger" size={40} />
+        <h2 className="mt-4 text-xl font-semibold">Tickets are closed</h2>
+        <p className="mt-2 text-sm text-muted">
+          {closedReason ?? "We're not accepting new tickets right now — check back soon."}
+        </p>
       </div>
     );
   }

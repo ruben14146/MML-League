@@ -21,12 +21,26 @@ export async function POST(request: NextRequest) {
   const name = String(body.name ?? "").trim();
   const imageUrl = body.image_url ? String(body.image_url).trim() : null;
   const description = body.description ? String(body.description).trim() : null;
+  const modelUrl = body.model_url ? String(body.model_url).trim() : null;
+  const modelType = body.model_type === "obj" || body.model_type === "fbx" ? body.model_type : null;
+  const colorMapUrl = body.color_map_url ? String(body.color_map_url).trim() : null;
+  const normalMapUrl = body.normal_map_url ? String(body.normal_map_url).trim() : null;
+  const metallicMapUrl = body.metallic_map_url ? String(body.metallic_map_url).trim() : null;
 
   if (!name) return NextResponse.json({ error: "Name is required" }, { status: 400 });
 
   const { data, error } = await supabaseAdmin()
     .from("store_items")
-    .insert({ name, image_url: imageUrl, description })
+    .insert({
+      name,
+      image_url: imageUrl,
+      description,
+      model_url: modelUrl,
+      model_type: modelUrl ? modelType : null,
+      color_map_url: colorMapUrl,
+      normal_map_url: normalMapUrl,
+      metallic_map_url: metallicMapUrl,
+    })
     .select("*")
     .single();
 

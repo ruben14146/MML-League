@@ -6,6 +6,7 @@ export type TicketStatus =
   | "sent_to_lockers";
 export type TicketLocation = "inside" | "outside";
 export type StaffRole = "developer" | "owner" | "admin";
+export type ModelType = "obj" | "fbx";
 
 export type TicketItemRow = {
   id: string;
@@ -19,6 +20,11 @@ export type StoreItemRow = {
   name: string;
   image_url: string | null;
   description: string | null;
+  model_url: string | null;
+  model_type: ModelType | null;
+  color_map_url: string | null;
+  normal_map_url: string | null;
+  metallic_map_url: string | null;
   created_at: string;
 };
 
@@ -77,6 +83,14 @@ export type StaffMessageRow = {
   created_at: string;
 };
 
+export type SiteSettingsRow = {
+  id: true;
+  tickets_enabled: boolean;
+  tickets_disabled_reason: string | null;
+  updated_by: string | null;
+  updated_at: string;
+};
+
 type Table<Row, Insert, Update> = {
   Row: Row;
   Insert: Insert;
@@ -127,6 +141,7 @@ export type Database = {
         Partial<StaffMessageRow> & { sender_discord_id: string; sender_username: string; body: string },
         Partial<StaffMessageRow>
       >;
+      site_settings: Table<SiteSettingsRow, Partial<SiteSettingsRow>, Partial<SiteSettingsRow>>;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

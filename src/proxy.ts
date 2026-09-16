@@ -111,7 +111,11 @@ function pageCsp(nonce: string) {
     `style-src 'self' 'unsafe-inline'`,
     `img-src 'self' data: https://cdn.discordapp.com${supabase ? ` https://${supabase}` : ""}`,
     `font-src 'self'`,
-    `connect-src 'self'`,
+    // The 3D item viewer fetches model files (OBJ/FBX) and their texture
+    // maps from Supabase storage via fetch/XHR, which falls under
+    // connect-src rather than img-src.
+    `connect-src 'self'${supabase ? ` https://${supabase}` : ""}`,
+    `worker-src 'self' blob:`,
     `object-src 'none'`,
     `base-uri 'self'`,
     `form-action 'self'`,

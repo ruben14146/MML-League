@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Clock, CheckCircle2, XCircle, Boxes } from "lucide-react";
 import { supabaseAdmin } from "@/lib/supabase";
+import TicketsToggle from "@/components/admin/TicketsToggle";
 
 async function getCounts() {
   try {
@@ -44,6 +45,10 @@ export default async function AdminDashboard() {
           SUPABASE_SERVICE_ROLE_KEY to see live data.
         </div>
       )}
+
+      <div className="mt-6">
+        <TicketsToggle />
+      </div>
 
       <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {stats.map(({ label, value, icon: Icon, color }) => (

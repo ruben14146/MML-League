@@ -21,6 +21,21 @@ export async function PATCH(
   if (typeof body.image_url === "string" || body.image_url === null) {
     update.image_url = body.image_url;
   }
+  if (typeof body.model_url === "string" || body.model_url === null) {
+    update.model_url = body.model_url;
+  }
+  if (body.model_type === "obj" || body.model_type === "fbx" || body.model_type === null) {
+    update.model_type = body.model_type;
+  }
+  if (typeof body.color_map_url === "string" || body.color_map_url === null) {
+    update.color_map_url = body.color_map_url;
+  }
+  if (typeof body.normal_map_url === "string" || body.normal_map_url === null) {
+    update.normal_map_url = body.normal_map_url;
+  }
+  if (typeof body.metallic_map_url === "string" || body.metallic_map_url === null) {
+    update.metallic_map_url = body.metallic_map_url;
+  }
 
   const { data, error } = await supabaseAdmin()
     .from("store_items")

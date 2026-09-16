@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { serverError } from "@/lib/http";
 import { isBanned } from "@/lib/bans";
 import { isGuildBooster } from "@/lib/discordBot";
+import { getTicketSettings } from "@/lib/settings";
 import {
   generateTicketCode,
   isValidDiscordMessageLink,
@@ -111,6 +112,18 @@ export async function POST(request: NextRequest) {
   // someone still holds an existing session cookie.
   if (await isBanned(session.user.discordId)) {
     return NextResponse.json({ error: "Your account has been banned." }, { status: 403 });
+  }
+
+  const ticketSettings = await getTicketSettings();
+  if (!ticketSettings.enabled) {
+    return NextResponse.json(
+      {
+        error: ticketSettings.reason
+          ? `Tickets are currently closed: ${ticketSettings.reason}`
+          : "Tickets are currently closed.",
+      },
+      { status: 403 }
+    );
   }
 
   const body = await request.json();
