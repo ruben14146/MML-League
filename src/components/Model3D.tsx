@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef } from "react";
 import { Canvas, useLoader } from "@react-three/fiber";
-import { OrbitControls, useTexture } from "@react-three/drei";
+import { OrbitControls, useTexture, Environment, Lightformer } from "@react-three/drei";
 import type { OrbitControls as OrbitControlsImpl } from "three-stdlib";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader.js";
 import { FBXLoader } from "three/examples/jsm/loaders/FBXLoader.js";
@@ -71,8 +71,11 @@ function Model({ modelUrl, modelType, colorMapUrl, normalMapUrl, metallicMapUrl 
           map: colorMapUrl ? textures.map : undefined,
           normalMap: normalMapUrl ? textures.normalMap : undefined,
           metalnessMap: metallicMapUrl ? textures.metalnessMap : undefined,
-          metalness: metallicMapUrl ? 1 : 0.15,
-          roughness: 0.55,
+          metalness: metallicMapUrl ? 1 : 0.3,
+          roughness: metallicMapUrl ? 0.35 : 0.4,
+          // Picked up by the procedural studio environment below, giving
+          // items a bit of a glossy sheen instead of looking flat/matte.
+          envMapIntensity: 1.3,
           color: colorMapUrl ? undefined : new THREE.Color("#8fb8c9"),
           // Exported models frequently have some inverted-normal faces —
           // without this they render as solid black holes instead of the
@@ -96,23 +99,39 @@ function Loading() {
   );
 }
 
-function Lighting({ brightness }: { brightness: number }) {
-  // Soft ambient fill so nothing goes fully black, plus a key light and
-  // two colored accent lights for a simple, flattering setup — kept as
-  // plain lights (no HDRI environment map) since the CSP doesn't allow
-  // fetching one from an external CDN. `brightness` scales all of them
-  // together from the slider in the viewer's controls.
+export type LightRotation = { x: number; y: number; z: number };
+
+function rotateAround([x, y, z]: [number, number, number], rot: LightRotation): [number, number, number] {
+  const v = new THREE.Vector3(x, y, z);
+  v.applyEuler(
+    new THREE.Euler(THREE.MathUtils.degToRad(rot.x), THREE.MathUtils.degToRad(rot.y), THREE.MathUtils.degToRad(rot.z))
+  );
+  return [v.x, v.y, v.z];
+}
+
+function Lighting({ brightness, lightRotation }: { brightness: number; lightRotation: LightRotation }) {
+  // Soft ambient fill so nothing goes fully black, a key light + two
+  // colored accent lights that can be spun as a rig via lightRotation, and
+  // a purely procedural "studio" environment (drei's Lightformer panels
+  // rendered to an internal cubemap) for soft reflections/highlights on
+  // glossy materials — no external HDRI fetch, so it stays CSP-safe.
+  // `brightness` scales everything together from the viewer's slider.
+  const key = useMemo(() => rotateAround([3, 4, 2], lightRotation), [lightRotation]);
+  const fillA = useMemo(() => rotateAround([-3, 1.5, -2], lightRotation), [lightRotation]);
+  const fillB = useMemo(() => rotateAround([0, -2, 3], lightRotation), [lightRotation]);
+
   return (
     <>
       <ambientLight intensity={0.5 * brightness} />
-      <directionalLight
-        position={[3, 4, 2]}
-        intensity={1.8 * brightness}
-        castShadow
-        shadow-mapSize={[1024, 1024]}
-      />
-      <pointLight position={[-3, 1.5, -2]} intensity={0.6 * brightness} color="#64ddff" />
-      <pointLight position={[0, -2, 3]} intensity={0.3 * brightness} color="#f6a9f3" />
+      <directionalLight position={key} intensity={1.8 * brightness} castShadow shadow-mapSize={[1024, 1024]} />
+      <pointLight position={fillA} intensity={0.6 * brightness} color="#64ddff" />
+      <pointLight position={fillB} intensity={0.3 * brightness} color="#f6a9f3" />
+
+      <Environment resolution={128} background={false}>
+        <Lightformer intensity={2.5 * brightness} color="white" position={[0, 5, 0]} scale={[10, 10, 1]} />
+        <Lightformer intensity={1 * brightness} color="#64ddff" position={key} scale={[5, 5, 1]} />
+        <Lightformer intensity={1 * brightness} color="#f6a9f3" position={fillB} scale={[5, 5, 1]} />
+      </Environment>
     </>
   );
 }
@@ -125,11 +144,13 @@ export default function Model3D({
   metallicMapUrl,
   className,
   brightness = 1,
+  lightRotation = { x: 0, y: 0, z: 0 },
   autoRotate = false,
   resetToken,
 }: ModelProps & {
   className?: string;
   brightness?: number;
+  lightRotation?: LightRotation;
   autoRotate?: boolean;
   /** Bump this value to snap the camera back to its default framing. */
   resetToken?: number;
@@ -145,7 +166,7 @@ export default function Model3D({
     <div className={`relative overflow-hidden rounded-lg bg-background-elevated ${className ?? ""}`}>
       <Suspense fallback={<Loading />}>
         <Canvas shadows camera={{ position: [2.2, 1.6, 2.2], fov: 45, near: 0.05, far: 100 }} dpr={[1, 2]}>
-          <Lighting brightness={brightness} />
+          <Lighting brightness={brightness} lightRotation={lightRotation} />
 
           <Model
             modelUrl={modelUrl}

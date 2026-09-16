@@ -10,8 +10,10 @@ import {
   RotateCcw,
   Maximize,
   Minimize,
+  Sun,
 } from "lucide-react";
 import type { StoreItemRow } from "@/lib/db.types";
+import type { LightRotation } from "@/components/Model3D";
 
 const Model3D = dynamic(() => import("@/components/Model3D"), {
   ssr: false,
@@ -22,15 +24,47 @@ const Model3D = dynamic(() => import("@/components/Model3D"), {
   ),
 });
 
+const PREFS_KEY = "mml3dViewerPrefs";
+const AXES = ["x", "y", "z"] as const;
+const AXIS_COLOR: Record<(typeof AXES)[number], string> = {
+  x: "text-danger",
+  y: "text-success",
+  z: "text-teal",
+};
+
 export default function ItemsGrid() {
   const [items, setItems] = useState<StoreItemRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<"photo" | "3d">("photo");
   const [brightness, setBrightness] = useState(1);
+  const [lightRotation, setLightRotation] = useState<LightRotation>({ x: 0, y: 0, z: 0 });
   const [resetToken, setResetToken] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const viewerRef = useRef<HTMLDivElement>(null);
+
+  // Lighting is a viewer-wide preference, not per-item — load whatever was
+  // last saved (if anything) once on mount.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(PREFS_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw);
+      if (typeof saved.brightness === "number") setBrightness(saved.brightness);
+      if (saved.lightRotation) setLightRotation(saved.lightRotation);
+    } catch {
+      // localStorage may be unavailable (private browsing, etc.) — fine,
+      // just fall back to defaults.
+    }
+  }, []);
+
+  function saveAsDefault() {
+    try {
+      localStorage.setItem(PREFS_KEY, JSON.stringify({ brightness, lightRotation }));
+    } catch {
+      // ignore — purely a convenience, not worth surfacing an error for
+    }
+  }
 
   useEffect(() => {
     const onChange = () => setIsFullscreen(document.fullscreenElement === viewerRef.current);
@@ -62,9 +96,9 @@ export default function ItemsGrid() {
 
   useEffect(() => {
     // Jump straight into 3D for items that have a model — no extra click
-    // needed — and always reset to neutral brightness on switch.
+    // needed. Brightness/lighting stay as-is across items (a viewer
+    // preference, not per-item state).
     setMode(has3D ? "3d" : "photo");
-    setBrightness(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
 
@@ -105,6 +139,7 @@ export default function ItemsGrid() {
                 normalMapUrl={selected.normal_map_url}
                 metallicMapUrl={selected.metallic_map_url}
                 brightness={brightness}
+                lightRotation={lightRotation}
                 resetToken={resetToken}
                 className="h-full w-full"
               />
@@ -118,6 +153,46 @@ export default function ItemsGrid() {
             ) : (
               <div className="h-full w-full" />
             ))}
+
+          {mode === "3d" && has3D && (
+            <div className="absolute left-3 top-3 flex w-60 flex-col gap-2.5 rounded-xl border border-panel-border bg-background/90 p-3 text-xs backdrop-blur">
+              <div className="flex items-center gap-2">
+                <Sun size={13} className="shrink-0 text-warning" />
+                <input
+                  type="range"
+                  min={0.3}
+                  max={2.5}
+                  step={0.05}
+                  value={brightness}
+                  onChange={(e) => setBrightness(Number(e.target.value))}
+                  className="h-1.5 flex-1 accent-teal"
+                />
+              </div>
+              {AXES.map((axis) => (
+                <div key={axis} className="flex items-center gap-2">
+                  <span className={`w-3 font-semibold ${AXIS_COLOR[axis]}`}>{axis.toUpperCase()}</span>
+                  <input
+                    type="range"
+                    min={-180}
+                    max={180}
+                    step={1}
+                    value={lightRotation[axis]}
+                    onChange={(e) =>
+                      setLightRotation((r) => ({ ...r, [axis]: Number(e.target.value) }))
+                    }
+                    className="h-1.5 flex-1 accent-teal"
+                  />
+                  <span className="w-8 text-right text-muted">{lightRotation[axis]}&deg;</span>
+                </div>
+              ))}
+              <button
+                onClick={saveAsDefault}
+                className="self-start text-teal hover:underline"
+              >
+                Save as default
+              </button>
+            </div>
+          )}
 
           <div className="absolute right-3 top-3 flex flex-col items-end gap-2">
             {has3D && (
@@ -146,22 +221,6 @@ export default function ItemsGrid() {
               {isFullscreen ? <Minimize size={13} /> : <Maximize size={13} />}
             </button>
           </div>
-
-          {mode === "3d" && has3D && (
-            <div className="absolute inset-x-3 bottom-3 flex items-center gap-3 rounded-full border border-panel-border bg-background/90 px-4 py-2 text-xs text-muted backdrop-blur">
-              <span>Dim</span>
-              <input
-                type="range"
-                min={0.3}
-                max={2.5}
-                step={0.05}
-                value={brightness}
-                onChange={(e) => setBrightness(Number(e.target.value))}
-                className="h-1.5 flex-1 accent-teal"
-              />
-              <span>Bright</span>
-            </div>
-          )}
         </div>
 
         {selected && (
