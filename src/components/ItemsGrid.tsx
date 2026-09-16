@@ -1,8 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { Loader2, PackageOpen, Box, Image as ImageIcon, RotateCcw } from "lucide-react";
+import {
+  Loader2,
+  PackageOpen,
+  Box,
+  Image as ImageIcon,
+  RotateCcw,
+  Maximize,
+  Minimize,
+} from "lucide-react";
 import type { StoreItemRow } from "@/lib/db.types";
 
 const Model3D = dynamic(() => import("@/components/Model3D"), {
@@ -21,6 +29,22 @@ export default function ItemsGrid() {
   const [mode, setMode] = useState<"photo" | "3d">("photo");
   const [brightness, setBrightness] = useState(1);
   const [resetToken, setResetToken] = useState(0);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const viewerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(document.fullscreenElement === viewerRef.current);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      viewerRef.current?.requestFullscreen();
+    }
+  }
 
   useEffect(() => {
     fetch("/api/store-items")
@@ -64,7 +88,14 @@ export default function ItemsGrid() {
   return (
     <div className="mx-auto mt-10 flex max-w-6xl flex-col gap-6 px-5 lg:flex-row">
       <div className="panel flex flex-1 flex-col gap-4 p-5 lg:order-2">
-        <div className="relative aspect-square w-full overflow-hidden rounded-lg bg-background-elevated sm:aspect-video">
+        <div
+          ref={viewerRef}
+          className={`relative w-full overflow-hidden bg-background-elevated ${
+            isFullscreen
+              ? "flex h-full items-center justify-center rounded-none"
+              : "aspect-square rounded-lg sm:aspect-video"
+          }`}
+        >
           {selected &&
             (mode === "3d" && has3D ? (
               <Model3D
@@ -88,8 +119,8 @@ export default function ItemsGrid() {
               <div className="h-full w-full" />
             ))}
 
-          {has3D && (
-            <div className="absolute right-3 top-3 flex flex-col items-end gap-2">
+          <div className="absolute right-3 top-3 flex flex-col items-end gap-2">
+            {has3D && (
               <button
                 onClick={() => setMode((m) => (m === "3d" ? "photo" : "3d"))}
                 className="flex items-center gap-1.5 rounded-full border border-panel-border bg-background/90 px-3 py-1.5 text-xs font-medium text-foreground/90 backdrop-blur hover:border-teal-dim hover:text-teal"
@@ -97,34 +128,41 @@ export default function ItemsGrid() {
                 {mode === "3d" ? <ImageIcon size={13} /> : <Box size={13} />}
                 {mode === "3d" ? "Photo" : "3D view"}
               </button>
-              {mode === "3d" && (
-                <button
-                  onClick={() => setResetToken((t) => t + 1)}
-                  className="flex items-center justify-center rounded-full border border-panel-border bg-background/90 p-1.5 text-foreground/90 backdrop-blur hover:border-teal-dim hover:text-teal"
-                  aria-label="Reset view"
-                >
-                  <RotateCcw size={13} />
-                </button>
-              )}
+            )}
+            {has3D && mode === "3d" && (
+              <button
+                onClick={() => setResetToken((t) => t + 1)}
+                className="flex items-center justify-center rounded-full border border-panel-border bg-background/90 p-1.5 text-foreground/90 backdrop-blur hover:border-teal-dim hover:text-teal"
+                aria-label="Reset view"
+              >
+                <RotateCcw size={13} />
+              </button>
+            )}
+            <button
+              onClick={toggleFullscreen}
+              className="flex items-center justify-center rounded-full border border-panel-border bg-background/90 p-1.5 text-foreground/90 backdrop-blur hover:border-teal-dim hover:text-teal"
+              aria-label={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+            >
+              {isFullscreen ? <Minimize size={13} /> : <Maximize size={13} />}
+            </button>
+          </div>
+
+          {mode === "3d" && has3D && (
+            <div className="absolute inset-x-3 bottom-3 flex items-center gap-3 rounded-full border border-panel-border bg-background/90 px-4 py-2 text-xs text-muted backdrop-blur">
+              <span>Dim</span>
+              <input
+                type="range"
+                min={0.3}
+                max={2.5}
+                step={0.05}
+                value={brightness}
+                onChange={(e) => setBrightness(Number(e.target.value))}
+                className="h-1.5 flex-1 accent-teal"
+              />
+              <span>Bright</span>
             </div>
           )}
         </div>
-
-        {mode === "3d" && has3D && (
-          <div className="flex items-center gap-3 text-xs text-muted">
-            <span>Dim</span>
-            <input
-              type="range"
-              min={0.3}
-              max={2.5}
-              step={0.05}
-              value={brightness}
-              onChange={(e) => setBrightness(Number(e.target.value))}
-              className="h-1.5 flex-1 accent-teal"
-            />
-            <span>Bright</span>
-          </div>
-        )}
 
         {selected && (
           <div>
