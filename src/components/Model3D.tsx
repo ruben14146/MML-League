@@ -36,6 +36,30 @@ function Model({ modelUrl, modelType, colorMapUrl, normalMapUrl, metallicMapUrl 
   // cached loader result out from under another instance.
   const cloned = useMemo(() => object.clone(true), [object]);
 
+  // Runs exactly once per loaded model instance — deliberately depends
+  // only on `cloned`, not on the textures/material effect below. Box3's
+  // setFromObject measures *world-space* bounds, which already include
+  // whatever scale is currently applied; re-running this after the first
+  // pass would measure the already-normalized (small) model and rescale
+  // again from that, compounding on every re-run (this is what caused the
+  // render to intermittently blow up/flatten out — e.g. every other time
+  // the brightness slider moved and re-rendered this component).
+  useEffect(() => {
+    // FBX/OBJ exports carry wildly inconsistent units (cm vs m) and an
+    // arbitrary pivot, which throws off framing far more than any camera
+    // setting can compensate for. Normalize scale so the model's longest
+    // dimension is a fixed size, and re-center it on the origin, rather
+    // than trusting the file's own coordinates.
+    const box = new THREE.Box3().setFromObject(cloned);
+    const size = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z) || 1;
+    const scale = 1.6 / maxDim;
+    cloned.scale.setScalar(scale);
+
+    const center = box.getCenter(new THREE.Vector3()).multiplyScalar(scale);
+    cloned.position.set(-center.x, -center.y, -center.z);
+  }, [cloned]);
+
   useEffect(() => {
     textures.map.colorSpace = THREE.SRGBColorSpace;
     textures.normalMap.colorSpace = THREE.NoColorSpace;
@@ -59,20 +83,6 @@ function Model({ modelUrl, modelType, colorMapUrl, normalMapUrl, metallicMapUrl 
         child.receiveShadow = true;
       }
     });
-
-    // FBX/OBJ exports carry wildly inconsistent units (cm vs m) and an
-    // arbitrary pivot, which throws off framing far more than any camera
-    // setting can compensate for. Normalize scale so the model's longest
-    // dimension is a fixed size, and re-center it on the origin, rather
-    // than trusting the file's own coordinates.
-    const box = new THREE.Box3().setFromObject(cloned);
-    const size = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z) || 1;
-    const scale = 1.6 / maxDim;
-    cloned.scale.setScalar(scale);
-
-    const center = box.getCenter(new THREE.Vector3()).multiplyScalar(scale);
-    cloned.position.set(-center.x, -center.y, -center.z);
   }, [cloned, textures, colorMapUrl, normalMapUrl, metallicMapUrl]);
 
   return <primitive object={cloned} />;
