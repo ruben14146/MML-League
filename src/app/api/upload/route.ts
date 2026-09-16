@@ -1,72 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
 import { requireStaffSession } from "@/lib/admin";
+import { createSignedUpload } from "@/lib/storageUpload";
 import { serverError } from "@/lib/http";
 
-const MAX_BYTES = 5 * 1024 * 1024;
+const ALLOWED_EXT = new Set(["png", "jpg", "jpeg", "gif", "webp"]);
 
-// The image type is determined from the file's actual bytes, never from the
-// client-supplied Content-Type or filename extension — both are trivially
-// spoofable and could otherwise be used to smuggle a mislabeled file into
-// public storage.
-const SIGNATURES: { type: string; ext: string; bytes: number[] }[] = [
-  { type: "image/png", ext: "png", bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] },
-  { type: "image/jpeg", ext: "jpg", bytes: [0xff, 0xd8, 0xff] },
-  { type: "image/gif", ext: "gif", bytes: [0x47, 0x49, 0x46, 0x38] },
-];
-
-function sniffImageType(bytes: Uint8Array): { type: string; ext: string } | null {
-  for (const sig of SIGNATURES) {
-    if (sig.bytes.every((b, i) => bytes[i] === b)) return { type: sig.type, ext: sig.ext };
-  }
-  // WEBP: "RIFF" .... "WEBP"
-  if (
-    bytes[0] === 0x52 &&
-    bytes[1] === 0x49 &&
-    bytes[2] === 0x46 &&
-    bytes[3] === 0x46 &&
-    bytes[8] === 0x57 &&
-    bytes[9] === 0x45 &&
-    bytes[10] === 0x42 &&
-    bytes[11] === 0x50
-  ) {
-    return { type: "image/webp", ext: "webp" };
-  }
-  return null;
-}
-
+// Issues a signed upload URL rather than proxying the file itself — large
+// texture maps (4K normal/metallic maps in particular) regularly exceed
+// Vercel's ~4.5MB serverless request body cap, so the browser uploads
+// directly to Supabase storage instead. This trades away server-side
+// magic-byte sniffing of the image for extension-based validation, which
+// is an acceptable loosening given the endpoint is staff-only either way.
 export async function POST(request: NextRequest) {
   const staff = await requireStaffSession();
   if (!staff) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const formData = await request.formData();
-  const file = formData.get("file");
+  const body = await request.json();
+  const filename = String(body.filename ?? "");
+  const ext = filename.toLowerCase().split(".").pop();
+  const normalizedExt = ext === "jpeg" ? "jpg" : ext;
 
-  if (!(file instanceof File)) {
-    return NextResponse.json({ error: "No file provided" }, { status: 400 });
-  }
-  if (file.size > MAX_BYTES) {
-    return NextResponse.json({ error: "File is too large (max 5MB)" }, { status: 400 });
-  }
-
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const detected = sniffImageType(bytes);
-  if (!detected) {
+  if (!normalizedExt || !ALLOWED_EXT.has(normalizedExt)) {
     return NextResponse.json(
-      { error: "Unsupported or invalid image file (must be PNG, JPEG, GIF, or WebP)" },
+      { error: "Unsupported image file (must be PNG, JPEG, GIF, or WebP)" },
       { status: 400 }
     );
   }
 
-  const path = `${crypto.randomUUID()}.${detected.ext}`;
-
-  const { error } = await supabaseAdmin()
-    .storage.from("item-images")
-    .upload(path, bytes, { contentType: detected.type, upsert: false });
-
-  if (error) return serverError(error, "upload");
-
-  const { data: publicUrl } = supabaseAdmin().storage.from("item-images").getPublicUrl(path);
-
-  return NextResponse.json({ url: publicUrl.publicUrl });
+  try {
+    const { path, token, publicUrl } = await createSignedUpload("item-images", normalizedExt);
+    return NextResponse.json({ path, token, url: publicUrl });
+  } catch (error) {
+    return serverError(error, "upload.init");
+  }
 }

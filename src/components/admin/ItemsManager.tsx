@@ -2,31 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { Loader2, Plus, Trash2, Upload, Pencil, Check, X, Box, Eraser } from "lucide-react";
-import type { ModelType, StoreItemRow, TicketItemRow } from "@/lib/db.types";
+import type { StoreItemRow, TicketItemRow } from "@/lib/db.types";
+import { uploadImageDirect, uploadModelDirect } from "@/lib/uploadClient";
 
 type Kind = "ticket" | "store";
 type AnyItem = TicketItemRow | StoreItemRow;
 
 function endpoint(kind: Kind) {
   return kind === "ticket" ? "/api/ticket-items" : "/api/store-items";
-}
-
-async function uploadImage(f: File) {
-  const form = new FormData();
-  form.append("file", f);
-  const res = await fetch("/api/upload", { method: "POST", body: form });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? "Upload failed");
-  return data.url as string;
-}
-
-async function uploadModel(f: File) {
-  const form = new FormData();
-  form.append("file", f);
-  const res = await fetch("/api/upload-model", { method: "POST", body: form });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? "Upload failed");
-  return { url: data.url as string, modelType: data.model_type as ModelType };
 }
 
 // Inline panel for attaching the 3D showcase assets (model + 3 texture
@@ -46,13 +29,13 @@ function Store3DPanel({ item, onSaved }: { item: StoreItemRow; onSaved: () => vo
     try {
       const update: Record<string, unknown> = {};
       if (modelFile) {
-        const { url, modelType } = await uploadModel(modelFile);
+        const { url, modelType } = await uploadModelDirect(modelFile);
         update.model_url = url;
         update.model_type = modelType;
       }
-      if (colorFile) update.color_map_url = await uploadImage(colorFile);
-      if (normalFile) update.normal_map_url = await uploadImage(normalFile);
-      if (metallicFile) update.metallic_map_url = await uploadImage(metallicFile);
+      if (colorFile) update.color_map_url = await uploadImageDirect(colorFile);
+      if (normalFile) update.normal_map_url = await uploadImageDirect(normalFile);
+      if (metallicFile) update.metallic_map_url = await uploadImageDirect(metallicFile);
 
       if (Object.keys(update).length === 0) return;
 
@@ -183,7 +166,7 @@ function ItemsList({ kind, title }: { kind: Kind; title: string }) {
     setSaving(true);
     try {
       let image_url: string | null = null;
-      if (file) image_url = await uploadImage(file);
+      if (file) image_url = await uploadImageDirect(file);
       await fetch(endpoint(kind), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
