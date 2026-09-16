@@ -21,24 +21,35 @@ function Store3DPanel({ item, onSaved }: { item: StoreItemRow; onSaved: () => vo
   const [normalFile, setNormalFile] = useState<File | null>(null);
   const [metallicFile, setMetallicFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function save() {
+    if (!modelFile && !colorFile && !normalFile && !metallicFile) return;
     setSaving(true);
     setError(null);
     try {
       const update: Record<string, unknown> = {};
       if (modelFile) {
+        setProgress("Uploading model...");
         const { url, modelType } = await uploadModelDirect(modelFile);
         update.model_url = url;
         update.model_type = modelType;
       }
-      if (colorFile) update.color_map_url = await uploadImageDirect(colorFile);
-      if (normalFile) update.normal_map_url = await uploadImageDirect(normalFile);
-      if (metallicFile) update.metallic_map_url = await uploadImageDirect(metallicFile);
+      if (colorFile) {
+        setProgress("Uploading color/UV map...");
+        update.color_map_url = await uploadImageDirect(colorFile);
+      }
+      if (normalFile) {
+        setProgress("Uploading normal map...");
+        update.normal_map_url = await uploadImageDirect(normalFile);
+      }
+      if (metallicFile) {
+        setProgress("Uploading metallic map...");
+        update.metallic_map_url = await uploadImageDirect(metallicFile);
+      }
 
-      if (Object.keys(update).length === 0) return;
-
+      setProgress("Saving...");
       const res = await fetch(`/api/store-items/${item.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -57,6 +68,7 @@ function Store3DPanel({ item, onSaved }: { item: StoreItemRow; onSaved: () => vo
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
       setSaving(false);
+      setProgress(null);
     }
   }
 
@@ -111,6 +123,7 @@ function Store3DPanel({ item, onSaved }: { item: StoreItemRow; onSaved: () => vo
       {fileRow("Metallic map", metallicFile, setMetallicFile, "image/*", item.metallic_map_url)}
 
       {error && <p className="text-xs text-danger">{error}</p>}
+      {progress && <p className="text-xs text-teal">{progress}</p>}
 
       <div className="mt-1 flex items-center gap-2">
         <button

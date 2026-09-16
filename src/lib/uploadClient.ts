@@ -18,24 +18,41 @@ function supabaseBrowser() {
   return browserClient;
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out — check your connection and try again.`)), ms)
+    ),
+  ]);
+}
+
 async function directUpload(bucket: string, initEndpoint: string, file: File) {
   const initRes = await fetch(initEndpoint, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ filename: file.name }),
+    signal: AbortSignal.timeout(15_000),
+  }).catch(() => {
+    throw new Error("Couldn't reach the server to start the upload.");
   });
+
   const initText = await initRes.text();
   let initData: Record<string, unknown>;
   try {
     initData = JSON.parse(initText);
   } catch {
-    throw new Error(`Upload failed (server returned an unexpected response).`);
+    throw new Error("Upload failed (server returned an unexpected response).");
   }
   if (!initRes.ok) throw new Error((initData.error as string) ?? "Upload failed");
 
-  const { error } = await supabaseBrowser()
-    .storage.from(bucket)
-    .uploadToSignedUrl(initData.path as string, initData.token as string, file);
+  const { error } = await withTimeout(
+    supabaseBrowser()
+      .storage.from(bucket)
+      .uploadToSignedUrl(initData.path as string, initData.token as string, file),
+    120_000,
+    `Uploading ${file.name}`
+  );
   if (error) throw new Error(error.message || "Upload failed");
 
   return initData;
