@@ -24,7 +24,23 @@ type ModelProps = {
   metallicMapUrl: string | null;
 };
 
-function Model({ modelUrl, modelType, colorMapUrl, normalMapUrl, metallicMapUrl }: ModelProps) {
+type ModelInnerProps = ModelProps & {
+  /** Degrees — corrects the source file's default export orientation. */
+  rotationX: number;
+  rotationY: number;
+  rotationZ: number;
+};
+
+function Model({
+  modelUrl,
+  modelType,
+  colorMapUrl,
+  normalMapUrl,
+  metallicMapUrl,
+  rotationX,
+  rotationY,
+  rotationZ,
+}: ModelInnerProps) {
   const object = useLoader(modelType === "fbx" ? FBXLoader : OBJLoader, modelUrl);
   const textures = useTexture({
     map: colorMapUrl ?? BLANK_PIXEL,
@@ -36,28 +52,22 @@ function Model({ modelUrl, modelType, colorMapUrl, normalMapUrl, metallicMapUrl 
   // cached loader result out from under another instance.
   const cloned = useMemo(() => object.clone(true), [object]);
 
-  // Runs exactly once per loaded model instance — deliberately depends
-  // only on `cloned`, not on the textures/material effect below. Box3's
-  // setFromObject measures *world-space* bounds, which already include
-  // whatever scale is currently applied; re-running this after the first
-  // pass would measure the already-normalized (small) model and rescale
-  // again from that, compounding on every re-run (this is what caused the
-  // render to intermittently blow up/flatten out — e.g. every other time
-  // the brightness slider moved and re-rendered this component).
-  useEffect(() => {
+  // Scale/center are purely geometric properties of the pristine clone —
+  // computed once and applied declaratively via the wrapping <group>
+  // below, rather than mutated in place. Mutating cloned.scale/position
+  // directly and re-measuring on a later re-render would measure the
+  // *already* transformed object and compound (this is what caused the
+  // render to intermittently blow up/flatten out previously).
+  const { scale, centerOffset } = useMemo(() => {
     // FBX/OBJ exports carry wildly inconsistent units (cm vs m) and an
     // arbitrary pivot, which throws off framing far more than any camera
-    // setting can compensate for. Normalize scale so the model's longest
-    // dimension is a fixed size, and re-center it on the origin, rather
-    // than trusting the file's own coordinates.
+    // setting can compensate for.
     const box = new THREE.Box3().setFromObject(cloned);
     const size = box.getSize(new THREE.Vector3());
     const maxDim = Math.max(size.x, size.y, size.z) || 1;
-    const scale = 1.6 / maxDim;
-    cloned.scale.setScalar(scale);
-
-    const center = box.getCenter(new THREE.Vector3()).multiplyScalar(scale);
-    cloned.position.set(-center.x, -center.y, -center.z);
+    const s = 1.6 / maxDim;
+    const center = box.getCenter(new THREE.Vector3()).multiplyScalar(s);
+    return { scale: s, centerOffset: [-center.x, -center.y, -center.z] as [number, number, number] };
   }, [cloned]);
 
   useEffect(() => {
@@ -88,7 +98,16 @@ function Model({ modelUrl, modelType, colorMapUrl, normalMapUrl, metallicMapUrl 
     });
   }, [cloned, textures, colorMapUrl, normalMapUrl, metallicMapUrl]);
 
-  return <primitive object={cloned} />;
+  // Outer group applies the orientation correction around the model's own
+  // center (the inner group has already been centered on the origin at
+  // unit scale), inner group applies the scale/centering worked out above.
+  return (
+    <group rotation={[THREE.MathUtils.degToRad(rotationX), THREE.MathUtils.degToRad(rotationY), THREE.MathUtils.degToRad(rotationZ)]}>
+      <group scale={scale} position={centerOffset}>
+        <primitive object={cloned} />
+      </group>
+    </group>
+  );
 }
 
 function Loading() {
@@ -145,12 +164,19 @@ export default function Model3D({
   className,
   brightness = 1,
   lightRotation = { x: 0, y: 0, z: 0 },
+  rotationX = 0,
+  rotationY = 0,
+  rotationZ = 0,
   autoRotate = false,
   resetToken,
 }: ModelProps & {
   className?: string;
   brightness?: number;
   lightRotation?: LightRotation;
+  /** Degrees — corrects the source file's default export orientation. */
+  rotationX?: number;
+  rotationY?: number;
+  rotationZ?: number;
   autoRotate?: boolean;
   /** Bump this value to snap the camera back to its default framing. */
   resetToken?: number;
@@ -174,6 +200,9 @@ export default function Model3D({
             colorMapUrl={colorMapUrl}
             normalMapUrl={normalMapUrl}
             metallicMapUrl={metallicMapUrl}
+            rotationX={rotationX}
+            rotationY={rotationY}
+            rotationZ={rotationZ}
           />
 
           <OrbitControls

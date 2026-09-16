@@ -24,6 +24,11 @@ create table if not exists store_items (
   color_map_url text,
   normal_map_url text,
   metallic_map_url text,
+  -- Corrects each model's default export orientation so it displays
+  -- upright/"as intended" rather than however the source file exported it.
+  model_rotation_x double precision not null default 0,
+  model_rotation_y double precision not null default 0,
+  model_rotation_z double precision not null default 0,
   created_at timestamptz not null default now()
 );
 

@@ -25,6 +25,9 @@ export type StoreItemRow = {
   color_map_url: string | null;
   normal_map_url: string | null;
   metallic_map_url: string | null;
+  model_rotation_x: number;
+  model_rotation_y: number;
+  model_rotation_z: number;
   created_at: string;
 };
 

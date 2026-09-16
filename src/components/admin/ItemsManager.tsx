@@ -1,9 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { Loader2, Plus, Trash2, Upload, Pencil, Check, X, Box, Eraser } from "lucide-react";
 import type { StoreItemRow, TicketItemRow } from "@/lib/db.types";
 import { uploadImageDirect, uploadModelDirect } from "@/lib/uploadClient";
+
+const Model3D = dynamic(() => import("@/components/Model3D"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-full w-full items-center justify-center">
+      <Loader2 className="animate-spin text-teal" size={20} />
+    </div>
+  ),
+});
+
+const ROTATION_AXES = ["x", "y", "z"] as const;
+const ROTATION_AXIS_COLOR: Record<(typeof ROTATION_AXES)[number], string> = {
+  x: "text-danger",
+  y: "text-success",
+  z: "text-teal",
+};
 
 type Kind = "ticket" | "store";
 type AnyItem = TicketItemRow | StoreItemRow;
@@ -23,6 +40,30 @@ function Store3DPanel({ item, onSaved }: { item: StoreItemRow; onSaved: () => vo
   const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [rotation, setRotation] = useState({
+    x: item.model_rotation_x,
+    y: item.model_rotation_y,
+    z: item.model_rotation_z,
+  });
+  const [savingRotation, setSavingRotation] = useState(false);
+
+  async function saveRotation() {
+    setSavingRotation(true);
+    try {
+      await fetch(`/api/store-items/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model_rotation_x: rotation.x,
+          model_rotation_y: rotation.y,
+          model_rotation_z: rotation.z,
+        }),
+      });
+      onSaved();
+    } finally {
+      setSavingRotation(false);
+    }
+  }
 
   async function save() {
     if (!modelFile && !colorFile && !normalFile && !metallicFile) return;
@@ -121,6 +162,48 @@ function Store3DPanel({ item, onSaved }: { item: StoreItemRow; onSaved: () => vo
       {fileRow("Color / UV map", colorFile, setColorFile, "image/*", item.color_map_url)}
       {fileRow("Normal map", normalFile, setNormalFile, "image/*", item.normal_map_url)}
       {fileRow("Metallic map", metallicFile, setMetallicFile, "image/*", item.metallic_map_url)}
+
+      {item.model_url && item.model_type && (
+        <div className="flex flex-col gap-2 border-t border-panel-border pt-2">
+          <p className="text-[10px] uppercase tracking-wide text-muted">
+            Orientation (how it stands by default)
+          </p>
+          <Model3D
+            modelUrl={item.model_url}
+            modelType={item.model_type}
+            colorMapUrl={item.color_map_url}
+            normalMapUrl={item.normal_map_url}
+            metallicMapUrl={item.metallic_map_url}
+            rotationX={rotation.x}
+            rotationY={rotation.y}
+            rotationZ={rotation.z}
+            className="aspect-square w-full"
+          />
+          {ROTATION_AXES.map((axis) => (
+            <div key={axis} className="flex items-center gap-2 text-xs">
+              <span className={`w-3 font-semibold ${ROTATION_AXIS_COLOR[axis]}`}>{axis.toUpperCase()}</span>
+              <input
+                type="range"
+                min={-180}
+                max={180}
+                step={1}
+                value={rotation[axis]}
+                onChange={(e) => setRotation((r) => ({ ...r, [axis]: Number(e.target.value) }))}
+                className="h-1.5 flex-1 accent-teal"
+              />
+              <span className="w-8 text-right text-muted">{rotation[axis]}&deg;</span>
+            </div>
+          ))}
+          <button
+            onClick={saveRotation}
+            disabled={savingRotation}
+            className="flex items-center gap-1 self-start rounded-lg border border-teal-dim px-3 py-1.5 text-xs font-medium text-teal hover:bg-teal/10 disabled:opacity-40"
+          >
+            {savingRotation ? <Loader2 size={12} className="animate-spin" /> : <Check size={12} />}
+            Save orientation
+          </button>
+        </div>
+      )}
 
       {error && <p className="text-xs text-danger">{error}</p>}
       {progress && <p className="text-xs text-teal">{progress}</p>}

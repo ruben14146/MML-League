@@ -129,6 +129,9 @@ export default function ItemsGrid() {
                 colorMapUrl={selected.color_map_url}
                 normalMapUrl={selected.normal_map_url}
                 metallicMapUrl={selected.metallic_map_url}
+                rotationX={selected.model_rotation_x}
+                rotationY={selected.model_rotation_y}
+                rotationZ={selected.model_rotation_z}
                 brightness={brightness}
                 resetToken={resetToken}
                 className="h-full w-full"

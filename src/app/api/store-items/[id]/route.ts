@@ -36,6 +36,9 @@ export async function PATCH(
   if (typeof body.metallic_map_url === "string" || body.metallic_map_url === null) {
     update.metallic_map_url = body.metallic_map_url;
   }
+  if (typeof body.model_rotation_x === "number") update.model_rotation_x = body.model_rotation_x;
+  if (typeof body.model_rotation_y === "number") update.model_rotation_y = body.model_rotation_y;
+  if (typeof body.model_rotation_z === "number") update.model_rotation_z = body.model_rotation_z;
 
   const { data, error } = await supabaseAdmin()
     .from("store_items")
